@@ -473,3 +473,22 @@ body {
     font-size: 1.2rem;
     background-color: #111;
 }
+.back-home-btn {
+    position: absolute; top: 20px; left: 20px;
+    background: transparent; border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan); padding: 8px 15px; border-radius: 5px;
+    cursor: pointer; z-index: 100; font-weight: bold;
+}
+.back-home-btn:hover { background: var(--neon-cyan); color: #000; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+.form-grid input, .form-grid select, .form-grid textarea {
+    background: #111; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 5px;
+}
+.full-width { grid-column: 1 / -1; }
+.fixed-btn {
+    position: fixed !important;
+    top: 20px;
+    left: 20px;
+    z-index: 999;
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+}
