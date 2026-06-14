@@ -48,7 +48,15 @@ backend/
 Arranque local (ejemplo en PowerShell):
 
 cd backend
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+python -m venv venv
 ..\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+
+python manage.py migrate
+python manage.py createsuperuser
+
 python manage.py runserver
 # Servidor: http://127.0.0.1:8000
 
@@ -75,6 +83,11 @@ Interfaz de usuario:
 Arranque local:
 
 cd frontend
+python -m venv venv
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+..\venv\Scripts\Activate.ps1
+rm -r -force node_modules, package-lock.json
+npm config set strict-ssl false
 npm install      (solo la primera vez)
 npm run dev      (servidor en http://localhost:5173)
 

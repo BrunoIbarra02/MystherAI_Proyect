@@ -22,6 +22,17 @@ const Resumen = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, title: '', value: '' });
 
+  const userColors = [
+    '#ff4b2b',
+    'var(--neon-cyan)',
+    '#bc13fe',
+    '#2ecc71',
+    '#f39c12',
+    '#3498db',
+    '#e91e63'
+  ];
+  const getUsuarioColor = (idx) => userColors[idx % userColors.length];
+
   // Estados reactivos cargados desde el backend
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,6 +42,8 @@ const Resumen = () => {
   const [inicialMapas, setInicialMapas] = useState([]);
   const [exclusivasMateo, setExclusivasMateo] = useState([]);
   const [exclusivasMiguel, setExclusivasMiguel] = useState([]);
+  const [usuariosData, setUsuariosData] = useState([]);
+  const [exclusivasPorUsuario, setExclusivasPorUsuario] = useState({});
   const [generoData, setGeneroData] = useState([]);
   const [etniaData, setEtniaData] = useState([]);
   const [cruceGenEtnia, setCruceGenEtnia] = useState([]);
@@ -57,6 +70,8 @@ const Resumen = () => {
       setInicialMapas(data.inicialMapas);
       setExclusivasMateo(data.exclusivasMateo);
       setExclusivasMiguel(data.exclusivasMiguel);
+      setUsuariosData(data.usuariosData || []);
+      setExclusivasPorUsuario(data.exclusivasPorUsuario || {});
       setGeneroData(data.generoData);
       setEtniaData(data.etniaData);
       setCruceGenEtnia(data.cruceGenEtnia);
@@ -378,7 +393,7 @@ const Resumen = () => {
           className={`tab-btn ${activeTab === 'comparativa' ? 'active' : ''}`}
           onClick={() => { setActiveTab('comparativa'); hideChartTooltip(); }}
         >
-          <UserCheck size={16} /> Mateo vs Miguel
+          <UserCheck size={16} /> Comparativa de Usuarios
         </button>
         <button
           className={`tab-btn ${activeTab === 'diversidad' ? 'active' : ''}`}
@@ -439,18 +454,121 @@ const Resumen = () => {
       {/* SECCIÓN 1: RESUMEN GENERAL */}
       {activeTab === 'general' && (
         <section className="resumen-section">
-          {kpis.sinClasificar > 0 && (
-            <div className="alert-box alert-danger glass-panel">
-              <span className="alert-icon"><AlertTriangle color="#ff4b2b" /></span>
-              <div className="alert-message">
-                <h4>Revisión Crítica Requerida</h4>
-                <p>
-                  El <strong>30.5%</strong> de los videos ({kpis.sinClasificar} en total) no tienen especie clasificada.
-                  Esto requiere una asignación manual urgente para categorizarlos correctamente en Humano o Animal.
-                </p>
-              </div>
+          {/* Diagnóstico y Alertas para Entrenamiento de IA */}
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+              <TrendingUp size={20} className="neon-cyan-text" />
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'white' }}>Diagnóstico de Datos para Entrenamiento de IA</h3>
             </div>
-          )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {/* ALERTA 1: Especie Sin Clasificar (Crítico) */}
+              {kpis.sinClasificar > 0 && (
+                <div className="alert-box alert-danger glass-panel" style={{ margin: 0, borderLeft: '4px solid #ff4b2b' }}>
+                  <span className="alert-icon"><AlertTriangle color="#ff4b2b" /></span>
+                  <div className="alert-message">
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                      <span className="tag red-bg" style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'uppercase' }}>CRÍTICO</span>
+                      Etiquetas Faltantes (Sin Clasificar)
+                    </h4>
+                    <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                      El <strong>{((kpis.sinClasificar / kpis.totalVideos) * 100).toFixed(1)}%</strong> de los videos ({kpis.sinClasificar} de {kpis.totalVideos} en total) no tienen especie clasificada. Para entrenar un modelo de clasificación supervisado (ej. ResNet, YOLO), es requisito que el 100% de las muestras posean una etiqueta válida.
+                      <br />
+                      <strong style={{ color: '#ffb3a7' }}>Acción recomendada:</strong> Completar el etiquetado manual urgente a 'Humano' o 'Animal'.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ALERTA 2: Sesgo de Género por Mapa (Advertencia) */}
+              {mapasSoloHombres.length > 0 && (
+                <div className="alert-box alert-warning glass-panel" style={{ margin: 0, borderLeft: '4px solid #f39c12' }}>
+                  <span className="alert-icon"><AlertTriangle color="#f39c12" /></span>
+                  <div className="alert-message">
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                      <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(243, 156, 18, 0.2)', borderColor: '#f39c12', color: '#f39c12', textTransform: 'uppercase' }}>SESGO DE GÉNERO</span>
+                      Sesgo Espacial en Distribución de Género
+                    </h4>
+                    <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                      Se detectó desbalance de género en <strong>{mapasSoloHombres.length}</strong> de los {kpis.totalMapas} mapas ({((mapasSoloHombres.length / kpis.totalMapas) * 100).toFixed(1)}% del total), donde únicamente se capturaron personajes masculinos (ej. <em>{mapasSoloHombres.slice(0, 5).join(', ')}</em>...). Un modelo de IA entrenado con este sesgo podría asociar erróneamente el entorno físico con el género del personaje.
+                      <br />
+                      <strong style={{ color: '#ffe5b4' }}>Acción recomendada:</strong> Añadir videos con personajes femeninos en los mapas masculinos detectados.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ALERTA 3: Sesgo de Grabador / Dispositivo (Advertencia) */}
+              {(exclusivasMateo.length > 0 || exclusivasMiguel.length > 0) && (
+                <div className="alert-box alert-warning glass-panel" style={{ margin: 0, borderLeft: '4px solid #f39c12' }}>
+                  <span className="alert-icon"><AlertTriangle color="#f39c12" /></span>
+                  <div className="alert-message">
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                      <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(243, 156, 18, 0.2)', borderColor: '#f39c12', color: '#f39c12', textTransform: 'uppercase' }}>SESGO DE CAPTURA</span>
+                      Incompatibilidad de Cobertura por Grabador
+                    </h4>
+                    <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                      Existe una falta de cobertura cruzada: Mateo tiene <strong>{exclusivasMateo.length}</strong> mapas exclusivos y Miguel tiene <strong>{exclusivasMiguel.length}</strong> mapas exclusivos. Para prevenir que la IA aprenda sesgos específicos del capturador (como iluminación, compresión o estilo de encuadre de cada dispositivo/operador) en lugar de las características del escenario, se requiere un dataset homogéneo.
+                      <br />
+                      <strong style={{ color: '#ffe5b4' }}>Acción recomendada:</strong> Grabar videos cruzados en los mapas exclusivos (ej. Mateo en mapas de Miguel, y viceversa).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ALERTA 4: Desbalance Demográfico Cruce Género x Etnia (Información) */}
+              {cruceGenEtnia && cruceGenEtnia.length > 0 && (
+                (() => {
+                  const minDem = cruceGenEtnia.reduce((prev, curr) => prev.value < curr.value ? prev : curr);
+                  const maxDem = cruceGenEtnia.reduce((prev, curr) => prev.value > curr.value ? prev : curr);
+                  const gapPercent = (((maxDem.value - minDem.value) / maxDem.value) * 100).toFixed(0);
+
+                  return gapPercent > 20 ? (
+                    <div className="alert-box alert-info glass-panel" style={{ margin: 0, borderLeft: '4px solid var(--neon-cyan)' }}>
+                      <span className="alert-icon"><AlertTriangle color="var(--neon-cyan)" /></span>
+                      <div className="alert-message">
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                          <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(0, 242, 255, 0.2)', borderColor: 'var(--neon-cyan)', color: 'var(--neon-cyan)', textTransform: 'uppercase' }}>BALANCE DEMOGRÁFICO</span>
+                          Desbalance en Cruce Demográfico (Género x Etnia)
+                        </h4>
+                        <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                          El cruce demográfico con menor representación es <strong>"{minDem.label}"</strong> ({minDem.value} videos), existiendo una brecha de <strong>{gapPercent}%</strong> respecto a la clase mayoritaria <strong>"{maxDem.label}"</strong> ({maxDem.value} videos). Esto puede inducir sesgos de reconocimiento facial y atributos en el entrenamiento del modelo.
+                          <br />
+                          <strong style={{ color: '#e0f7fa' }}>Acción recomendada:</strong> Capturar más datos del grupo demográfico subrepresentado ("{minDem.label}") hasta nivelar la muestra.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null;
+                })()
+              )}
+
+              {/* ALERTA 5: Desbalance de Cámaras (Información) */}
+              {camaraData && camaraData.length > 0 && (
+                (() => {
+                  const mostUsed = camaraData[0];
+                  const leastUsed = camaraData[camaraData.length - 1];
+                  const ratio = (mostUsed.value / (leastUsed.value || 1)).toFixed(1);
+
+                  return parseFloat(ratio) > 2.0 ? (
+                    <div className="alert-box alert-info glass-panel" style={{ margin: 0, borderLeft: '4px solid var(--neon-cyan)' }}>
+                      <span className="alert-icon"><AlertTriangle color="var(--neon-cyan)" /></span>
+                      <div className="alert-message">
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                          <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(0, 242, 255, 0.2)', borderColor: 'var(--neon-cyan)', color: 'var(--neon-cyan)', textTransform: 'uppercase' }}>DESBALANCE TÉCNICO</span>
+                          Desproporción en Tipo de Cámara (Perspectiva)
+                        </h4>
+                        <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                          El tipo de cámara <strong>"{mostUsed.label}"</strong> ({mostUsed.value} videos) es <strong>{ratio} veces</strong> más frecuente que la cámara <strong>"{leastUsed.label}"</strong> ({leastUsed.value} videos). La variabilidad de perspectiva es crítica para entrenar clasificadores de acción independientes del ángulo de cámara.
+                          <br />
+                          <strong style={{ color: '#e0f7fa' }}>Acción recomendada:</strong> Incrementar tomas de video usando el tipo de cámara "{leastUsed.label}" para diversificar los ángulos en el entrenamiento.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null;
+                })()
+              )}
+            </div>
+          </div>
 
           <div className="charts-row">
             <div className="chart-card glass-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -477,14 +595,12 @@ const Resumen = () => {
                 <p className="chart-subtitle">Métricas acumuladas del esfuerzo de digitalización.</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '10px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-                  <span style={{ color: 'var(--text-dim)' }}>Videos de Mateo</span>
-                  <span style={{ fontWeight: 'bold' }}>{kpis.videosMateo} videos ({((kpis.videosMateo / kpis.totalVideos) * 100).toFixed(1)}%)</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-                  <span style={{ color: 'var(--text-dim)' }}>Videos de Miguel</span>
-                  <span style={{ fontWeight: 'bold' }}>{kpis.videosMiguel} videos ({((kpis.videosMiguel / kpis.totalVideos) * 100).toFixed(1)}%)</span>
-                </div>
+                {usuariosData.map((usr) => (
+                  <div key={usr.usuario} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
+                    <span style={{ color: 'var(--text-dim)' }}>Videos de {usr.usuario.charAt(0).toUpperCase() + usr.usuario.slice(1).toLowerCase()}</span>
+                    <span style={{ fontWeight: 'bold' }}>{usr.value} videos ({usr.percent}%)</span>
+                  </div>
+                ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
                   <span style={{ color: 'var(--text-dim)' }}>Tiempo de Grabación</span>
                   <span style={{ fontWeight: 'bold' }}>{(kpis.totalSegundos / 60).toFixed(1)} minutos ({kpis.totalSegundos}s)</span>
@@ -648,126 +764,159 @@ const Resumen = () => {
         </section>
       )}
 
-      {/* SECCIÓN 3: COMPARATIVA MATEO VS MIGUEL */}
+      {/* SECCIÓN 3: COMPARATIVA DE USUARIOS */}
       {activeTab === 'comparativa' && (
         <section className="resumen-section">
-          <div className="charts-row">
-            <div className="chart-card glass-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <h3>Carga de Trabajo por Miembro</h3>
-                <p className="chart-subtitle">Videos aportados al censo por cada responsable.</p>
-              </div>
+          {(() => {
+            const sortedUsers = [...usuariosData].sort((a, b) => b.value - a.value);
+            const maxUser = sortedUsers[0];
+            const minUser = sortedUsers[sortedUsers.length - 1];
+            const gap = maxUser ? (maxUser.value - minUser.value) : 0;
+            
+            return (
+              <>
+                <div className="charts-row">
+                  <div className="chart-card glass-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3>Carga de Trabajo por Miembro</h3>
+                      <p className="chart-subtitle">Videos aportados al censo por cada responsable.</p>
+                    </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '180px', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-dim)' }}>
-                  <span>MATEO ({kpis.videosMateo} videos)</span>
-                  <span>MIGUEL ({kpis.videosMiguel} videos)</span>
-                </div>
-
-                <div style={{ width: '100%', height: '30px', borderRadius: '15px', display: 'flex', overflow: 'hidden', border: '1px solid var(--glass-border)', boxShadow: '0 0 15px rgba(0,0,0,0.5)' }}>
-                  <div
-                    className="bar-rect"
-                    style={{ width: `${(kpis.videosMateo / kpis.totalVideos) * 100}%`, height: '100%', background: 'linear-gradient(to right, #ff4b2b, #f39c12)' }}
-                    onMouseMove={(e) => showChartTooltip(e, 'MATEO', `${kpis.videosMateo} videos (${((kpis.videosMateo / kpis.totalVideos) * 100).toFixed(1)}%)`)}
-                    onMouseLeave={hideChartTooltip}
-                  />
-                  <div
-                    className="bar-rect"
-                    style={{ width: `${(kpis.videosMiguel / kpis.totalVideos) * 100}%`, height: '100%', background: 'linear-gradient(to right, var(--neon-cyan), #00bcd4)' }}
-                    onMouseMove={(e) => showChartTooltip(e, 'MIGUEL', `${kpis.videosMiguel} videos (${((kpis.videosMiguel / kpis.totalVideos) * 100).toFixed(1)}%)`)}
-                    onMouseLeave={hideChartTooltip}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '20px', fontSize: '0.85rem' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#f39c12' }} />
-                    Mateo: {((kpis.videosMateo / kpis.totalVideos) * 100).toFixed(1)}%
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'var(--neon-cyan)' }} />
-                    Miguel: {((kpis.videosMiguel / kpis.totalVideos) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', textAlign: 'center', margin: 0 }}>
-                  El censo está equilibrado a nivel global, con una diferencia de tan solo {kpis.videosMateo - kpis.videosMiguel} videos.
-                </p>
-              </div>
-            </div>
-
-            <div className="chart-card glass-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <h3>Comparación en Top Mapas</h3>
-                <p className="chart-subtitle">Aportes individuales en las localizaciones más grandes.</p>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {inicialMapas.slice(0, 5).map(m => {
-                  const totalLocal = m.mateo + m.miguel;
-                  const pctMateo = (m.mateo / totalLocal) * 100;
-                  const pctMiguel = (m.miguel / totalLocal) * 100;
-                  return (
-                    <div key={m.name}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'white', marginBottom: '4px' }}>
-                        <span>{m.name}</span>
-                        <span>Mateo: {m.mateo} | Miguel: {m.miguel}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '180px', flexDirection: 'column', gap: '20px' }}>
+                      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-dim)', flexWrap: 'wrap' }}>
+                        {usuariosData.map((usr) => (
+                          <span key={usr.usuario}>{usr.usuario} ({usr.value} videos)</span>
+                        ))}
                       </div>
-                      <div style={{ width: '100%', height: '8px', borderRadius: '4px', display: 'flex', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                        {m.mateo > 0 && <div style={{ width: `${pctMateo}%`, height: '100%', backgroundColor: '#f39c12' }} />}
-                        {m.miguel > 0 && <div style={{ width: `${pctMiguel}%`, height: '100%', backgroundColor: 'var(--neon-cyan)' }} />}
+
+                      <div style={{ width: '100%', height: '30px', borderRadius: '15px', display: 'flex', overflow: 'hidden', border: '1px solid var(--glass-border)', boxShadow: '0 0 15px rgba(0,0,0,0.5)' }}>
+                        {usuariosData.map((usr, idx) => (
+                          <div
+                            key={usr.usuario}
+                            className="bar-rect"
+                            style={{
+                              width: `${(usr.value / (kpis?.totalVideos || 1)) * 100}%`,
+                              height: '100%',
+                              backgroundColor: getUsuarioColor(idx)
+                            }}
+                            onMouseMove={(e) => showChartTooltip(e, usr.usuario, `${usr.value} videos (${usr.percent}%)`)}
+                            onMouseLeave={hideChartTooltip}
+                          />
+                        ))}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '20px', fontSize: '0.85rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {usuariosData.map((usr, idx) => (
+                          <span key={usr.usuario} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: getUsuarioColor(idx) }} />
+                            {usr.usuario}: {usr.percent}%
+                          </span>
+                        ))}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              <div className="chart-legends">
-                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#f39c12' }} /> Mateo</span>
-                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: 'var(--neon-cyan)' }} /> Miguel</span>
-              </div>
-            </div>
-          </div>
+                    <div>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', textAlign: 'center', margin: 0 }}>
+                        {usuariosData.length > 1 ? (
+                          `El censo cuenta con participación de ${usuariosData.length} miembros. El máximo aportante es ${maxUser?.usuario} con ${maxUser?.value} videos, existiendo una diferencia de ${gap} videos respecto al mínimo aportante (${minUser?.usuario}).`
+                        ) : (
+                          `El censo cuenta con participación de ${usuariosData.length} miembro activo.`
+                        )}
+                      </p>
+                    </div>
+                  </div>
 
-          <div className="chart-card glass-panel">
-            <h3>Mapas Exclusivos de un Miembro</h3>
-            <p className="chart-subtitle">Localizaciones donde solo ha grabado un miembro del equipo.</p>
+                  <div className="chart-card glass-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3>Comparación en Top Mapas</h3>
+                      <p className="chart-subtitle">Aportes individuales en las localizaciones más grandes.</p>
+                    </div>
 
-            <div className="comparison-table-wrapper">
-              <table className="exclusive-table">
-                <thead>
-                  <tr>
-                    <th>Solo MATEO ({exclusivasMateo.length} mapas)</th>
-                    <th>Solo MIGUEL ({exclusivasMiguel.length} mapas)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: Math.max(exclusivasMateo.length, exclusivasMiguel.length) }).map((_, idx) => (
-                    <tr key={idx}>
-                      <td>
-                        {exclusivasMateo[idx] ? (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>{exclusivasMateo[idx].name}</span>
-                            <span className="tag-mateo">{exclusivasMateo[idx].total} videos</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      {inicialMapas.slice(0, 5).map(m => {
+                        const mapUsers = m.usuarios || {};
+                        const totalLocal = Object.values(mapUsers).reduce((a, b) => a + b, 0) || 1;
+                        
+                        return (
+                          <div key={m.name}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'white', marginBottom: '4px' }}>
+                              <span>{m.name}</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                                {Object.entries(mapUsers)
+                                  .filter(([_, count]) => count > 0)
+                                  .map(([user, count]) => `${user}: ${count}`)
+                                  .join(' | ')}
+                              </span>
+                            </div>
+                            <div style={{ width: '100%', height: '8px', borderRadius: '4px', display: 'flex', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                              {Object.entries(mapUsers).map(([user, count], idx) => {
+                                if (count === 0) return null;
+                                const userIdx = usuariosData.findIndex(u => u.usuario === user);
+                                return (
+                                  <div 
+                                    key={user}
+                                    style={{ 
+                                      width: `${(count / totalLocal) * 100}%`, 
+                                      height: '100%', 
+                                      backgroundColor: getUsuarioColor(userIdx !== -1 ? userIdx : idx) 
+                                    }} 
+                                  />
+                                );
+                              })}
+                            </div>
                           </div>
-                        ) : ''}
-                      </td>
-                      <td>
-                        {exclusivasMiguel[idx] ? (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>{exclusivasMiguel[idx].name}</span>
-                            <span className="tag-miguel">{exclusivasMiguel[idx].total} videos</span>
-                          </div>
-                        ) : ''}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="chart-legends">
+                      {usuariosData.map((usr, idx) => (
+                        <span key={usr.usuario} className="legend-item">
+                          <span className="legend-color" style={{ backgroundColor: getUsuarioColor(idx) }} />
+                          {usr.usuario}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="chart-card glass-panel" style={{ minHeight: 'auto' }}>
+                  <h3>Mapas Exclusivos por Miembro</h3>
+                  <p className="chart-subtitle">Localizaciones donde solo ha grabado un único miembro del equipo.</p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                    {usuariosData.map((usr, idx) => {
+                      const userExcl = exclusivasPorUsuario[usr.usuario] || [];
+                      
+                      return (
+                        <div key={usr.usuario} className="glass-panel" style={{ padding: '15px', border: `1px solid ${getUsuarioColor(idx)}40`, background: 'rgba(255,255,255,0.01)' }}>
+                          <h4 style={{ margin: '0 0 12px 0', borderBottom: `1px solid ${getUsuarioColor(idx)}20`, paddingBottom: '8px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Solo {usr.usuario}</span>
+                            <span className="tag" style={{ fontSize: '0.7rem', padding: '2px 8px', backgroundColor: `${getUsuarioColor(idx)}15`, borderColor: getUsuarioColor(idx), color: getUsuarioColor(idx) }}>
+                              {userExcl.length} mapas
+                            </span>
+                          </h4>
+                          
+                          {userExcl.length === 0 ? (
+                            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontStyle: 'italic', margin: '10px 0 0 0' }}>No posee mapas exclusivos.</p>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto', paddingRight: '5px' }}>
+                              {userExcl.map(m => (
+                                <div key={m.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: '#eee', padding: '6px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
+                                  <span>{m.name}</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{m.total} videos</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </section>
       )}
 
@@ -1157,48 +1306,6 @@ const Resumen = () => {
             paddingTop: '30px',
             borderTop: '1px solid rgba(255,255,255,0.06)'
           }}>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '16px' }}>
-                Los datos del checklist se guardan automáticamente en tu navegador.
-                Pulsa Actualizar para volver a consultar el backend y refrescar todos los gráficos.
-              </p>
-              <button
-                className="neon-button"
-                style={{
-                  padding: '14px 40px',
-                  fontSize: '0.95rem',
-                  letterSpacing: '2px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  background: 'linear-gradient(135deg, rgba(0,242,255,0.15), rgba(139,92,246,0.15))',
-                  border: '1px solid var(--neon-cyan)',
-                  boxShadow: '0 0 20px rgba(0,242,255,0.2), inset 0 0 20px rgba(0,242,255,0.05)'
-                }}
-                onClick={() => {
-                  localStorage.removeItem('mystherai_action_plan');
-                  fetchSummary(true);
-                }}
-                disabled={loading}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18" height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }}
-                >
-                  <polyline points="23 4 23 10 17 10" />
-                  <polyline points="1 20 1 14 7 14" />
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                </svg>
-                {loading ? 'ACTUALIZANDO...' : 'ACTUALIZAR DATOS'}
-              </button>
-            </div>
           </div>
         </section>
       )}
