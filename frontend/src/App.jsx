@@ -4,9 +4,10 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Herramienta from './pages/Herramienta';
 import Profile from './pages/Profile';
-import Censo from './pages/Censo';         // <-- Asegurando esta importación
-import Registro from './pages/Registro';   // <-- Asegurando esta importación
-import Resumen from './pages/Resumen';     // <-- Añadiendo Resumen
+import Censo from './pages/Censo';
+import Registro from './pages/Registro';
+import Resumen from './pages/Resumen';
+import Estadisticas from './pages/Estadisticas';  // <-- Nuevo dashboard Fase 2
 import { ApiKeyProvider } from './context/ApiKeyContext';
 
 function App() {
@@ -18,9 +19,10 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/herramienta" element={<Herramienta />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/censo" element={<Censo />} />         {/* <-- Asegurando esta ruta */}
-          <Route path="/registro" element={<Registro />} />   {/* <-- Asegurando esta ruta */}
-          <Route path="/resumen" element={<Resumen />} />     {/* <-- Nueva ruta para el Resumen */}
+          <Route path="/censo" element={<Censo />} />
+          <Route path="/registro" element={<Registro />} />
+          <Route path="/resumen" element={<Resumen />} />
+          <Route path="/estadisticas" element={<Estadisticas />} />  {/* <-- Nueva ruta Fase 2 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

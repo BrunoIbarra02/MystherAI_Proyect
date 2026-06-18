@@ -34,6 +34,12 @@ const Dashboard = () => {
           <h2>Resumen</h2>
           <p>Análisis del censo de videos, distribución por especie, mapas y aspectos técnicos.</p>
         </div>
+
+        <div className="op-card glass-panel" onClick={() => navigate('/estadisticas')} style={{ borderTop: '2px solid #bc13fe' }}>
+          <div className="card-icon">🎨</div>
+          <h2>Estadísticas</h2>
+          <p>Balance del dataset de Fase 2: Anime, Cartoon, Lego y Ciberpunk — análisis de estilizado.</p>
+        </div>
       </div>
 
       <div style={{textAlign: 'center'}}>

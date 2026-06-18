@@ -157,8 +157,16 @@ const Resumen = () => {
   };
 
   const hideChartTooltip = () => {
-    setTooltip({ show: false, x: 0, y: 0, title: '', value: '' });
+    setTooltip(t => t.show ? { show: false, x: 0, y: 0, title: '', value: '' } : t);
   };
+
+  // Ocultar tooltip si el mouse sale de la ventana del navegador
+  useEffect(() => {
+    const onLeave = () => hideChartTooltip();
+    document.addEventListener('mouseleave', onLeave);
+    return () => document.removeEventListener('mouseleave', onLeave);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // -------------------------------------------------------------
   // LÓGICA DE RENDERIZADO DE GRÁFICOS SVG
@@ -443,9 +451,13 @@ const Resumen = () => {
         </div>
       </div>
 
-      {/* TOOLTIP REACTIVO COMPARTIDO PARA LOS GRÁFICOS */}
+      {/* TOOLTIP REACTIVO COMPARTIDO — pointerEvents none para no interceptar mouse */}
       {tooltip.show && (
-        <div className="chart-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+        <div className="chart-tooltip" style={{
+          left: tooltip.x,
+          top: tooltip.y,
+          pointerEvents: 'none',
+        }}>
           <div className="tooltip-title">{tooltip.title}</div>
           <p className="tooltip-value">{tooltip.value}</p>
         </div>
