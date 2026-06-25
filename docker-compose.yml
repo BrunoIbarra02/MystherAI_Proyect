@@ -1,0 +1,30 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-key}
+      - DB_PATH=/data/db.sqlite3
+    volumes:
+      - sqlite_data:/data
+
+  gradio-service:
+    build: ./gradio-service
+    ports:
+      - "7860:7860"
+    environment:
+      - WAVESPEED_API_KEY=${WAVESPEED_API_KEY:-}
+    volumes:
+      - gradio_outputs:/app/outputs
+
+volumes:
+  sqlite_data:
+  gradio_outputs:
