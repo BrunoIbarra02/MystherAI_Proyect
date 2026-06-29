@@ -82,7 +82,16 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost",
     "http://127.0.0.1",
 ]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+    r"^https://.*\.run\.app$",
+]
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.vercel.app",
+    "https://*.run.app",
+]
 
 # ========== REST FRAMEWORK ==========
 REST_FRAMEWORK = {

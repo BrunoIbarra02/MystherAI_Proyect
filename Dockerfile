@@ -20,4 +20,4 @@ COPY --from=build-stage /frontend/dist /app/static_root
 
 RUN python manage.py collectstatic --noinput
 
-CMD ["sh", "-c", "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py setup_users && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2"]
