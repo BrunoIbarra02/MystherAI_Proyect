@@ -67,13 +67,32 @@ const Herramienta = () => {
 
       {/* Área de la herramienta */}
       <div style={s.toolArea}>
-        {/* iFrame de WaveSpeed (solo si hay API Key) */}
+        {/* Launcher de WaveSpeed (abre en nueva pestaña con la key cargada) */}
         {apiKey && (
-          <iframe
-            src="http://localhost:7860"
-            style={s.iframe}
-            title="WaveSpeed Tool"
-          />
+          <div style={s.launchArea}>
+            <div style={s.launchCard}>
+              <div style={s.launchIcon}>🌊</div>
+              <h2 style={s.launchTitle}>WaveSpeed Pro</h2>
+              <p style={s.launchSubtitle}>
+                La herramienta se abre en una nueva pestaña con tu API Key cargada automáticamente.
+              </p>
+              <button
+                className="neon-button"
+                style={{ padding: "14px 32px", fontSize: "15px" }}
+                onClick={() =>
+                  window.open(
+                    `http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860/?api_key=${encodeURIComponent(apiKey)}`,
+                    "_blank"
+                  )
+                }
+              >
+                Abrir herramienta WaveSpeed →
+              </button>
+              <p style={s.launchHint}>
+                Se abrirá en una nueva pestaña con tu sesión activa.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Modal de API Key */}
@@ -174,10 +193,48 @@ const getStyles = (theme) => {
       marginTop: "64px",
       position: "relative",
     },
-    iframe: {
+    launchArea: {
       width: "100%",
       height: "100%",
-      border: "none",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: isDark ? "var(--bg-dark)" : "#f0f0f0",
+    },
+    launchCard: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "16px",
+      padding: "48px",
+      background: isDark ? "rgba(20,20,20,0.9)" : "rgba(255,255,255,0.9)",
+      border: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.08)",
+      borderRadius: "24px",
+      boxShadow: isDark ? "0 24px 64px rgba(0,0,0,0.6)" : "0 24px 64px rgba(0,0,0,0.08)",
+      maxWidth: "440px",
+      textAlign: "center",
+    },
+    launchIcon: {
+      fontSize: "52px",
+      lineHeight: 1,
+    },
+    launchTitle: {
+      fontSize: "1.5rem",
+      fontWeight: "700",
+      margin: 0,
+      fontFamily: "var(--font-display)",
+      color: isDark ? "#f0f0f0" : "#111",
+    },
+    launchSubtitle: {
+      fontSize: "0.88rem",
+      color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
+      margin: 0,
+      lineHeight: 1.6,
+    },
+    launchHint: {
+      fontSize: "11px",
+      color: isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.35)",
+      margin: 0,
     },
     keyBadge: {
       display: "flex",
