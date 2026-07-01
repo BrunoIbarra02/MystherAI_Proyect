@@ -4,11 +4,21 @@ import { useApiKey } from '../context/ApiKeyContext';
 import AppNavbar from '../components/AppNavbar';
 import logoImg from '../assets/logo.jpeg';
 
-/**
- * Dashboard — Centro de operaciones principal.
- * Incluye: navbar con logo, tarjetas animadas y botón de cierre de sesión.
- * Paleta: negro/plata inspirada en el logo de MystherAI.
- */
+/* Gradio official logo (stacked blocks, orange-yellow gradient) */
+const GradioLogo = () => (
+  <svg viewBox="0 0 200 160" width="52" height="42" aria-label="Gradio" style={{ display: 'block', margin: '0 auto' }}>
+    <defs>
+      <linearGradient id="gr-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#FF7C00" />
+        <stop offset="100%" stopColor="#FFD21E" />
+      </linearGradient>
+    </defs>
+    <rect x="5"  y="115" width="190" height="38" rx="13" fill="url(#gr-grad)" />
+    <rect x="25" y="68"  width="150" height="36" rx="11" fill="url(#gr-grad)" opacity="0.88" />
+    <rect x="52" y="24"  width="96"  height="34" rx="10" fill="url(#gr-grad)" opacity="0.76" />
+  </svg>
+);
+
 const Dashboard = () => {
   const navigate    = useNavigate();
   const { clearApiKey } = useApiKey();
@@ -18,60 +28,78 @@ const Dashboard = () => {
     navigate('/');
   };
 
-  /* Definición de tarjetas de navegación */
-  const cards = [
+  const topCards = [
     {
-      id:       'card-censo',
-      ruta:     '/censo',
-      icon:     '📁',
-      titulo:   'Censo',
-      desc:     'Explorar el dataset de videos originales, metadatos de cámara y especies.',
-      accentColor: 'rgba(192,192,192,0.15)',
+      id:    'card-censo',
+      ruta:  '/censo',
+      icon:  '📁',
+      titulo: 'Censo',
+      desc:  'Explora el dataset de videos originales con metadatos de cámara, mapas, género y especie.',
+      tag:   'Dataset',
     },
     {
-      id:       'card-registro',
-      ruta:     '/registro',
-      icon:     '⚡',
-      titulo:   'Registro Mateo',
-      desc:     'Control de versiones finales, prompts de IA y parámetros de estilizado.',
-      accentColor: 'rgba(192,192,192,0.15)',
-    },
-    {
-      id:       'card-herramienta',
-      ruta:     '/herramienta',
-      icon:     '🛠️',
-      titulo:   'Herramienta IA',
-      desc:     'Acceso directo al motor WaveSpeed para texturización y edición avanzada.',
-      accentColor: 'rgba(192,192,192,0.15)',
-    },
-    {
-      id:       'card-resumen',
-      ruta:     '/resumen',
-      icon:     '📊',
-      titulo:   'Resumen',
-      desc:     'Análisis del censo de videos, distribución por especie, mapas y aspectos técnicos.',
-      accentColor: 'rgba(192,192,192,0.15)',
-    },
-    {
-      id:       'card-estadisticas',
-      ruta:     '/estadisticas',
-      icon:     '🎨',
-      titulo:   'Estadísticas',
-      desc:     'Balance del dataset de Fase 2: Anime, Cartoon, Lego y Ciberpunk — análisis de estilizado.',
-      accentColor: 'rgba(192,192,192,0.15)',
+      id:    'card-registro',
+      ruta:  '/registro',
+      icon:  '⚡',
+      titulo: 'Registro Grabaciones',
+      desc:  'Control de versiones finales, prompts de IA y parámetros de estilizado por miembro.',
+      tag:   'Pipeline',
     },
   ];
 
+  const bottomCards = [
+    {
+      id:    'card-resumen',
+      ruta:  '/resumen',
+      icon:  '📊',
+      titulo: 'Resumen',
+      desc:  'Análisis del censo: distribución por especie, mapas y aspectos técnicos.',
+      tag:   'Analytics',
+    },
+    {
+      id:    'card-estadisticas',
+      ruta:  '/estadisticas',
+      icon:  '🎨',
+      titulo: 'Estadísticas',
+      desc:  'Balance del dataset Fase 2: Anime, Cartoon, Lego y Ciberpunk.',
+      tag:   'Analytics',
+    },
+    {
+      id:    'card-herramienta',
+      ruta:  '/herramienta',
+      icon:  <GradioLogo />,
+      titulo: 'Servidor Gradio',
+      desc:  'Motor WaveSpeed para texturización y edición de video con IA.',
+      tag:   'Herramienta',
+      accent: true,
+    },
+  ];
+
+  const renderCard = (card, idx, delay = 0) => (
+    <div
+      key={card.id}
+      id={card.id}
+      className={`op-card glass-panel animate-in${card.accent ? ' op-card--gradio' : ''}`}
+      onClick={() => navigate(card.ruta)}
+      style={{ animationDelay: `${(idx + delay) * 0.07}s` }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && navigate(card.ruta)}
+    >
+      <span className="card-tag">{card.tag}</span>
+      <span className="card-icon">{card.icon}</span>
+      <h2>{card.titulo}</h2>
+      <p>{card.desc}</p>
+      <span className="card-arrow">→</span>
+    </div>
+  );
+
   return (
     <>
-      {/* Navbar global con botón de tema */}
       <AppNavbar />
 
-      {/* Contenido principal */}
       <div className="dashboard-container">
-        {/* Encabezado con logo grande */}
         <div className="dashboard-header">
-          {/* Wrapper para la sombra animada de caminata del conejo */}
           <div className="dashboard-logo-wrapper">
             <img
               src={logoImg}
@@ -84,33 +112,18 @@ const Dashboard = () => {
           <p className="page-subtitle">Selecciona un módulo para continuar</p>
         </div>
 
-        {/* Grid de tarjetas */}
-        <div className="cards-wrapper">
-          {cards.map((card, idx) => (
-            <div
-              key={card.id}
-              id={card.id}
-              className="op-card glass-panel animate-in"
-              onClick={() => navigate(card.ruta)}
-              style={{ animationDelay: `${idx * 0.07}s` }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && navigate(card.ruta)}
-            >
-              <span className="card-icon">{card.icon}</span>
-              <h2>{card.titulo}</h2>
-              <p>{card.desc}</p>
-            </div>
-          ))}
+        {/* Top row — 2 large cards */}
+        <div className="cards-wrapper cards-wrapper--top">
+          {topCards.map((card, idx) => renderCard(card, idx))}
         </div>
 
-        {/* Botón de cierre de sesión */}
-        <div style={{ textAlign: 'center' }}>
-          <button
-            id="logout-btn"
-            className="logout-btn"
-            onClick={handleLogout}
-          >
+        {/* Bottom row — 3 compact cards */}
+        <div className="cards-wrapper cards-wrapper--bottom">
+          {bottomCards.map((card, idx) => renderCard(card, idx, topCards.length))}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button id="logout-btn" className="logout-btn" onClick={handleLogout}>
             Cerrar Sesión
           </button>
         </div>
