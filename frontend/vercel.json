@@ -2,7 +2,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/[...proxy]"
+      "dest": "http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com/api/$1"
     },
     {
       "src": "/(.*)",
