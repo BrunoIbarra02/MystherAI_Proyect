@@ -1,4 +1,5 @@
 import os
+import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -7,7 +8,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-key")
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
@@ -57,19 +58,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Database: Supabase PostgreSQL in production, SQLite for local dev
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.getenv("DB_PATH", str(BASE_DIR / "db.sqlite3")),
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
-
-# Firestore for sessions and user authentication
-SESSION_ENGINE = "apps.firestore_session"
-
-AUTHENTICATION_BACKENDS = [
-    "apps.firestore_auth.FirestoreAuthBackend",
-]
 
 LANGUAGE_CODE = "es-es"
 TIME_ZONE = "America/Lima"
@@ -93,13 +89,15 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
-    r"^https://.*\.run\.app$",
+    r"^https://.*\.amazonaws\.com$",
+    r"^https://.*\.awsapprunner\.com$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.vercel.app",
-    "https://*.run.app",
+    "https://*.amazonaws.com",
+    "https://*.awsapprunner.com",
 ]
 
 SESSION_COOKIE_SAMESITE = "None"

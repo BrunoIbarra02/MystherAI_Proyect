@@ -1,133 +1,69 @@
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from apps.firestore_db import get_db
+from .models import VideoMetadata
 from .serializers import VideoMetadataSerializer
 
 # ==========================================
-# VISTAS ORIGINALES (RODRIGO) — Firestore
+# VISTAS ORIGINALES (RODRIGO)
 # ==========================================
 
-def _doc_to_dict(doc):
-    data = doc.to_dict()
-    data['id'] = doc.id
-    return data
-
-
-class VideoListView(APIView):
-    permission_classes = []
-
-    def get(self, request):
-        db = get_db()
-        items = [_doc_to_dict(d) for d in db.collection('videos').stream()]
-
-        tipo = request.query_params.get('tipo')
-        search = request.query_params.get('search', '').lower()
-
-        if tipo:
-            items = [i for i in items if (i.get('tipo') or '').lower() == tipo.lower()]
-
+class VideoListView(generics.ListCreateAPIView):
+    serializer_class = VideoMetadataSerializer
+    def get_queryset(self):
+        queryset = VideoMetadata.objects.all()
+        tipo = self.request.query_params.get('tipo')
+        search = self.request.query_params.get('search')
+        if tipo: queryset = queryset.filter(tipo__iexact=tipo)
         for f in ['usuario', 'mapa', 'etnia', 'estilizado', 'aceptado', 'genero', 'especie', 'camara', 'mateo_miguel']:
-            val = request.query_params.get(f, '').lower()
-            if val:
-                items = [i for i in items if val in (i.get(f) or '').lower()]
-
+            val = self.request.query_params.get(f)
+            if val: queryset = queryset.filter(**{f"{f}__icontains": val})
         if search:
-            items = [
-                i for i in items
-                if search in (i.get('video_id') or '').lower()
-                or search in (i.get('usuario') or '').lower()
-            ]
-
-        items.reverse()
-        return Response(items)
-
-    def post(self, request):
-        serializer = VideoMetadataSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        db = get_db()
-        data = dict(serializer.validated_data)
-        _, ref = db.collection('videos').add(data)
-        data['id'] = ref.id
-        return Response(data, status=status.HTTP_201_CREATED)
+            queryset = queryset.filter(Q(video_id__icontains=search) | Q(usuario__icontains=search))
+        return queryset.order_by("-id")
 
 
-class VideoDetailView(APIView):
-    permission_classes = []
-
-    def get(self, request, pk):
-        doc = get_db().collection('videos').document(pk).get()
-        if not doc.exists:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        return Response(_doc_to_dict(doc))
-
-    def put(self, request, pk):
-        ref = get_db().collection('videos').document(pk)
-        if not ref.get().exists:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        data = {k: v for k, v in request.data.items() if k != 'id'}
-        ref.update(data)
-        return Response(_doc_to_dict(ref.get()))
-
-    def patch(self, request, pk):
-        return self.put(request, pk)
-
-    def delete(self, request, pk):
-        ref = get_db().collection('videos').document(pk)
-        if not ref.get().exists:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        ref.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = VideoMetadata.objects.all()
+    serializer_class = VideoMetadataSerializer
 
 
 class FilterOptionsView(APIView):
-    permission_classes = []
-
     def get(self, request):
-        db = get_db()
         tipo = request.query_params.get('tipo', 'censo').lower()
-        items = [_doc_to_dict(d) for d in db.collection('videos').stream()]
-
-        censo_users = {
-            (i.get('usuario') or '').strip().lower()
-            for i in items
-            if (i.get('tipo') or '').lower() == 'censo'
-            and (i.get('usuario') or '').lower() not in ('', 'nan')
-        }
-
+        fields_to_filter = ["usuario", "mapa", "genero", "etnia", "camara", "especie", "estilizado", "aceptado"]
         options = {}
-        for field_name in ["usuario", "mapa", "genero", "etnia", "camara", "especie", "estilizado", "aceptado"]:
-            cleaned = [
-                str(i.get(field_name) or '').strip()
-                for i in items
-                if str(i.get(field_name) or '').strip().lower() not in ('', 'nan')
-            ]
-            if field_name == 'usuario':
-                if tipo == 'censo':
-                    cleaned = [v for v in cleaned if v.lower() in censo_users]
-                else:
-                    cleaned = [v for v in cleaned if v.lower() not in censo_users]
-            options[field_name] = sorted(set(cleaned))
 
+        for field_name in fields_to_filter:
+            distinct_values = VideoMetadata.objects.values_list(field_name, flat=True).distinct()
+            cleaned_values = [str(v).strip() for v in distinct_values if v and str(v).lower() != 'nan']
+
+            if field_name == 'usuario':
+                censo_users = set(
+                    str(v).strip().lower()
+                    for v in VideoMetadata.objects.filter(tipo='censo').values_list('usuario', flat=True).distinct()
+                    if v and str(v).lower() != 'nan'
+                )
+                if tipo == 'censo':
+                    cleaned_values = [v for v in cleaned_values if v.lower() in censo_users]
+                else:
+                    cleaned_values = [v for v in cleaned_values if v.lower() not in censo_users]
+
+            options[field_name] = sorted(list(set(cleaned_values)))
         return Response(options)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AutoRegisterVideoView(APIView):
-    permission_classes = []
-
     def post(self, request):
         serializer = VideoMetadataSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        db = get_db()
-        data = dict(serializer.validated_data)
-        _, ref = db.collection('videos').add(data)
-        data['id'] = ref.id
-        return Response(data, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ==========================================
 # VISTAS DE RESÚMENES Y DASHBOARD (BRUNO)

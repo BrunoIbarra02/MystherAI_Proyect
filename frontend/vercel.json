@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://mystherai-proyect-18030869294.europe-west1.run.app/api/:path*"
+      "destination": "REEMPLAZAR_CON_TU_URL_AWS/api/:path*"
     },
     {
       "source": "/(.*)",

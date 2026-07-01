@@ -1,28 +1,63 @@
-name: Deploy to Cloud Run
+name: Deploy to AWS Fargate
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - name: Build and Push Docker Image
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to ECR
+        id: build
+        env:
+          ECR_REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG:      ${{ github.sha }}
         run: |
-          gcloud auth configure-docker
-          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysther-ai .
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysther-ai
-      - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+          docker build \
+            --build-arg WAVESPEED_API_KEY="${{ secrets.WAVESPEED_API_KEY }}" \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Download current ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
+            --query taskDefinition \
+            > task-def.json
+
+      - name: Inject new image into task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          service: mysther-ai
-          image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/mysther-ai
-          region: us-central1
-          env_vars: |
-            WAVESPEED_API_KEY=${{ secrets.WAVESPEED_API_KEY }}
-            DJANGO_SETTINGS_MODULE=config.settings
+          task-definition:  task-def.json
+          container-name:   ${{ secrets.ECS_CONTAINER_NAME }}
+          image:            ${{ steps.build.outputs.image }}
+
+      - name: Deploy to ECS Fargate
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition:          ${{ steps.task-def.outputs.task-definition }}
+          service:                  ${{ secrets.ECS_SERVICE }}
+          cluster:                  ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
