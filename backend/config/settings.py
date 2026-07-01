@@ -64,6 +64,13 @@ DATABASES = {
     }
 }
 
+# Firestore for sessions and user authentication
+SESSION_ENGINE = "apps.firestore_session"
+
+AUTHENTICATION_BACKENDS = [
+    "apps.firestore_auth.FirestoreAuthBackend",
+]
+
 LANGUAGE_CODE = "es-es"
 TIME_ZONE = "America/Lima"
 USE_I18N = True
