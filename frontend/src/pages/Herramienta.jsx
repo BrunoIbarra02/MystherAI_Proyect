@@ -79,11 +79,14 @@ const Herramienta = () => {
             alt=""
             aria-hidden="true"
             style={{
-              position: "absolute", width: "420px", height: "420px",
+              position: "absolute",
+              top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "460px", height: "460px",
               objectFit: "cover", borderRadius: "50%",
-              opacity: 0.07, filter: "blur(32px) saturate(0)",
+              opacity: 0.12, filter: "blur(28px) saturate(0)",
               pointerEvents: "none", userSelect: "none",
-              boxShadow: "0 0 120px 60px rgba(255,255,255,0.06)",
+              boxShadow: "0 0 160px 80px rgba(255,255,255,0.08)",
             }}
           />
 

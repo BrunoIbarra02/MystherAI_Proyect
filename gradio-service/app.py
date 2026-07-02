@@ -338,25 +338,25 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
         with gr.Tab("01  CARGAR"):
             src_radio = gr.Radio(
                 ["Archivo Local", "URL de Drive / Web"],
-                value="Archivo Local", label="Fuente",
+                value="URL de Drive / Web", label="Fuente del Video",
             )
-            local_vid = gr.Video(label="Video", sources=["upload"], visible=True, height=220)
-            url_vid   = gr.Textbox(label="URL del Video (Google Drive o HTTP)", visible=False, lines=1)
+            local_vid = gr.Video(label="Subir Video", sources=["upload"], visible=False, height=220)
+            url_vid   = gr.Textbox(label="URL del Video (Google Drive o HTTP)", visible=True, lines=1)
 
             with gr.Row():
                 btn_analyze = gr.Button("ANALIZAR VIDEO", variant="primary", scale=1)
-                info_out    = gr.Textbox(label="Info del Video", interactive=False, scale=4, lines=1)
+                info_out    = gr.Textbox(label="Información del Video", interactive=False, scale=4, lines=1)
 
             with gr.Row():
-                frame_sl   = gr.Slider(0, 999, value=0, step=1, label="Frame", scale=4)
+                frame_sl   = gr.Slider(0, 999, value=0, step=1, label="Fotograma", scale=4)
                 frame_name = gr.Textbox(label="Nombre de la Captura", scale=2)
 
             with gr.Row():
-                btn_prev = gr.Button("VER FRAME", variant="secondary", scale=1)
+                btn_prev = gr.Button("VER FOTOGRAMA", variant="secondary", scale=1)
                 btn_snap = gr.Button("CAPTURAR Y GUARDAR", variant="primary", scale=2)
 
             with gr.Row():
-                frame_out  = gr.Image(label="Frame Capturado", height=280, scale=2)
+                frame_out  = gr.Image(label="Fotograma Capturado", height=280, scale=2)
                 frame_path = gr.Textbox(label="Ruta guardada", interactive=False, lines=4, scale=1)
 
             src_radio.change(
@@ -370,23 +370,50 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
 
         # ── 02  I2I — IMAGEN A IMAGEN ────────────────────────────────────────
         with gr.Tab("02  I2I"):
+            i2i_src_r = gr.Radio(
+                ["Archivo Local", "URL de Drive / Web"],
+                value="URL de Drive / Web", label="Fuente de la Imagen",
+            )
+            img_base_local = gr.Image(label="Subir Imagen", type="filepath", visible=False, height=240)
+            img_base_url   = gr.Textbox(label="URL de la Imagen (Google Drive o HTTP)", visible=True, lines=1)
+            img_base_prev  = gr.HTML("")
+
             with gr.Row():
-                with gr.Column(scale=1):
-                    img_base    = gr.Image(label="Imagen Base", type="filepath", height=280)
-                with gr.Column(scale=1):
-                    style_dd    = gr.Dropdown(list(ESTILOS.keys()), value="Anime", label="Estilo Visual")
-                    style_prompt= gr.Textbox(label="Prompt (editable)", lines=4, value=ESTILOS["Anime"])
-                    imagination = gr.Slider(0, 10, value=4, step=0.1,
-                                           label="Creatividad — 0 = fiel al original · 10 = libre")
-                    btn_stylize = gr.Button("GENERAR IMAGEN ESTILIZADA", variant="primary")
+                style_dd    = gr.Dropdown(list(ESTILOS.keys()), value="Anime", label="Estilo Visual")
+                imagination = gr.Slider(0, 10, value=4, step=0.1,
+                                        label="Creatividad — 0 = fiel al original · 10 = libre", scale=2)
+
+            style_prompt = gr.Textbox(label="Descripción del Estilo (editable)", lines=3, value=ESTILOS["Anime"])
+            btn_stylize  = gr.Button("GENERAR IMAGEN ESTILIZADA", variant="primary")
+
             with gr.Row():
                 est_img = gr.Image(label="Resultado", height=310, scale=2)
-                est_url = gr.Textbox(label="URL del resultado", interactive=False,
+                est_url = gr.Textbox(label="URL del Resultado", interactive=False,
                                      lines=3, elem_classes=["result-url"], scale=1)
+
+            # helpers — resolve image source
+            def _get_img(local, url):
+                if local: return local
+                if url and url.strip(): return url.strip()
+                raise gr.Error("Sube una imagen o pega una URL primero.")
+
+            i2i_src_r.change(
+                lambda t: (gr.update(visible=t == "Archivo Local"),
+                           gr.update(visible=t == "URL de Drive / Web")),
+                i2i_src_r, [img_base_local, img_base_url],
+            )
+            img_base_url.change(lambda u: drive_embed(u, 200), img_base_url, img_base_prev)
+
+            def _stylize_wrap(local, url, style, prompt, imagination, key):
+                img = local if local else (url.strip() if url and url.strip() else None)
+                if not img:
+                    raise gr.Error("Sube una imagen o pega una URL primero.")
+                return do_stylize(img, style, prompt, imagination, key)
 
             style_dd.change(fill_style_prompt, style_dd, style_prompt)
             btn_stylize.click(
-                do_stylize, [img_base, style_dd, style_prompt, imagination, api_key_st],
+                _stylize_wrap,
+                [img_base_local, img_base_url, style_dd, style_prompt, imagination, api_key_st],
                 [est_img, est_url],
             )
 
