@@ -358,21 +358,24 @@ with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base(), fill_h
             local_vid = gr.Video(label="Subir Video", sources=["upload"], visible=False, height=220)
             url_vid   = gr.Textbox(label="URL del Video (Google Drive o HTTP)", visible=True, lines=1)
 
-            with gr.Row():
-                btn_analyze = gr.Button("ANALIZAR VIDEO", variant="primary", scale=1)
-                info_out    = gr.Textbox(label="Información del Video", interactive=False, scale=4, lines=1)
+            # Full-width analyze button + result below — no awkward left-button layout
+            btn_analyze = gr.Button("ANALIZAR VIDEO", variant="primary")
+            info_out    = gr.Textbox(label="Información del Video", interactive=False, lines=1)
 
+            # 2-column grid: slider | capture name
             with gr.Row():
-                frame_sl   = gr.Slider(0, 999, value=0, step=1, label="Fotograma", scale=4)
+                frame_sl   = gr.Slider(0, 999, value=0, step=1, label="Fotograma", scale=3)
                 frame_name = gr.Textbox(label="Nombre de la Captura", scale=2)
 
+            # 2-column grid: preview btn | capture btn
             with gr.Row():
                 btn_prev = gr.Button("VER FOTOGRAMA", variant="secondary", scale=1)
                 btn_snap = gr.Button("CAPTURAR Y GUARDAR", variant="primary", scale=2)
 
+            # 2-column grid: frame image | saved path
             with gr.Row():
-                frame_out  = gr.Image(label="Fotograma Capturado", height=280, scale=2)
-                frame_path = gr.Textbox(label="Ruta guardada", interactive=False, lines=4, scale=1)
+                frame_out  = gr.Image(label="Fotograma Capturado", height=300, scale=2)
+                frame_path = gr.Textbox(label="Ruta guardada", interactive=False, lines=5, scale=1)
 
             src_radio.change(
                 lambda t: (gr.update(visible=t == "Archivo Local"),
@@ -554,19 +557,6 @@ with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base(), fill_h
             merge_result = gr.Video(label="Video Unido")
             btn_merge.click(do_merge, [merge_files, merge_name], merge_result)
 
-        # ── ⚙  CONFIG ─────────────────────────────────────────────────────────
-        with gr.Tab("⚙  CONFIG"):
-            gr.HTML('<p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 16px;">Configuración de la Sesión</p>')
-            api_in   = gr.Textbox(label="WaveSpeed API Key", type="password",
-                                  placeholder="ws-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-            api_stat = gr.Textbox(label="Estado", interactive=False)
-            btn_key  = gr.Button("GUARDAR API KEY", variant="primary")
-
-            def _save_key(k):
-                k = (k or "").strip()
-                return (k, "✓ API Key guardada.") if k else ("", "⚠  Ingresa una key válida.")
-
-            btn_key.click(_save_key, api_in, [api_key_st, api_stat])
 
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=7860)

@@ -225,12 +225,14 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
             {isAdmin && <button onClick={() => { setFormData({}); setShowAddForm(true); }} className="neon-button add-btn">+ ANADIR NUEVO</button>}
           </div>
           <div className="advanced-filters-center">
-            {Object.entries(filterOptions).map(([key, opts]) => (
-              <select key={key} className="glass-select-mini" value={filters[key] || ""} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })}>
-                <option value="">{key.toUpperCase()}</option>
-                {opts.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            ))}
+            {Object.entries(filterOptions)
+              .filter(([key]) => tipo !== 'censo' || !['estilizado', 'aceptado'].includes(key))
+              .map(([key, opts]) => (
+                <select key={key} className="glass-select-mini" value={filters[key] || ""} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })}>
+                  <option value="">{key.toUpperCase()}</option>
+                  {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ))}
           </div>
         </header>
 
