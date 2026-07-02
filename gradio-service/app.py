@@ -389,9 +389,9 @@ with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base(), fill_h
                 ["Archivo Local", "URL de Drive / Web"],
                 value="URL de Drive / Web", label="Fuente de la Imagen",
             )
+            # No .change() handlers on inputs — they caused server loops on every keystroke
             img_base_local = gr.Image(label="Subir Imagen", type="filepath", visible=False, height=240)
             img_base_url   = gr.Textbox(label="URL de la Imagen (Google Drive o HTTP)", visible=True, lines=1)
-            img_base_prev  = gr.HTML("")
 
             with gr.Row():
                 style_dd    = gr.Dropdown(list(ESTILOS.keys()), value="Anime", label="Estilo Visual")
@@ -406,18 +406,11 @@ with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base(), fill_h
                 est_url = gr.Textbox(label="URL del Resultado", interactive=False,
                                      lines=3, elem_classes=["result-url"], scale=1)
 
-            # helpers — resolve image source
-            def _get_img(local, url):
-                if local: return local
-                if url and url.strip(): return url.strip()
-                raise gr.Error("Sube una imagen o pega una URL primero.")
-
             i2i_src_r.change(
                 lambda t: (gr.update(visible=t == "Archivo Local"),
                            gr.update(visible=t == "URL de Drive / Web")),
                 i2i_src_r, [img_base_local, img_base_url],
             )
-            img_base_url.change(lambda u: drive_embed(u, 200), img_base_url, img_base_prev)
 
             def _stylize_wrap(local, url, style, prompt, imagination, key):
                 img = local if local else (url.strip() if url and url.strip() else None)
