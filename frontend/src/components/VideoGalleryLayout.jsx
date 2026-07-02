@@ -22,6 +22,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
   const dragStart = useRef({ x: 0, y: 0 });
   const dragOrigin = useRef({ x: 0, y: 0 });
 
+  const [battPct,   setBattPct]   = useState(0);
+  const [battLabel, setBattLabel] = useState('');
+
   const extractDriveID = useCallback((url) => {
     if (!url || typeof url !== 'string' || url.trim() === '') return null;
     const match = url.match(/(?:file\/d\/|id=|\/folders\/|open\?id=)([a-zA-Z0-9_-]{25,})/);
@@ -54,6 +57,20 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
   useEffect(() => {
     api.get(`/sheets/filter-options/?tipo=${tipo}`).then(res => setFilterOptions(res.data));
+  }, [tipo]);
+
+  useEffect(() => {
+    if (tipo !== 'registro') return;
+    Promise.all([
+      api.get('/sheets/videos/?tipo=censo'),
+      api.get('/sheets/videos/?tipo=registro'),
+    ]).then(([cRes, rRes]) => {
+      const c = cRes.data.length;
+      const r = rRes.data.length;
+      const pct = c > 0 ? Math.round((r / c) * 100) : 0;
+      setBattPct(pct);
+      setBattLabel(`${r}/${c}`);
+    }).catch(() => {});
   }, [tipo]);
 
   useEffect(() => {
@@ -149,7 +166,23 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
       <AppNavbar backTo="/dashboard" backLabel="Dashboard" />
       <div className="gallery-page-centered">
         <header className="control-header glass-panel">
-          <h1 className="page-title-center">{titulo}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+            <h1 className="page-title-center">{titulo}</h1>
+            {tipo === 'registro' && battLabel && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginTop: '2px' }}>
+                <div style={{ position: 'relative', width: '38px', height: '17px', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: '3px' }}>
+                  <div style={{
+                    width: `${battPct}%`, height: '100%', borderRadius: '2px',
+                    background: battPct > 60 ? '#2ecc71' : battPct > 25 ? '#f39c12' : '#e74c3c',
+                  }} />
+                  <div style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', width: '3px', height: '8px', background: 'rgba(255,255,255,0.18)', borderRadius: '0 2px 2px 0' }} />
+                </div>
+                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                  {battPct}% · {battLabel}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="search-box-center">
             <input type="text" placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchVideos()} className="glass-input main-search" />
             <button onClick={fetchVideos} className="neon-button">BUSCAR</button>
