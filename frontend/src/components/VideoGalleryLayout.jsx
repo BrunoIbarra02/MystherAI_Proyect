@@ -169,16 +169,46 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
             <h1 className="page-title-center">{titulo}</h1>
             {tipo === 'registro' && battLabel && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginTop: '2px' }}>
-                <div style={{ position: 'relative', width: '38px', height: '17px', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: '3px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginTop: '1px' }}>
+                {/* Battery shell — horizontal */}
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <div style={{
-                    width: `${battPct}%`, height: '100%', borderRadius: '2px',
-                    background: battPct > 60 ? '#2ecc71' : battPct > 25 ? '#f39c12' : '#e74c3c',
+                    width: '90px', height: '22px',
+                    border: '1.5px solid rgba(255,255,255,0.15)',
+                    borderRadius: '4px',
+                    background: 'rgba(0,0,0,0.4)',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  }}>
+                    {/* Fill */}
+                    <div style={{
+                      position: 'absolute', left: 0, top: 0, bottom: 0,
+                      width: `${battPct}%`,
+                      background: 'linear-gradient(90deg, #15803d, #22c55e)',
+                      borderRadius: '3px 0 0 3px',
+                      transition: 'width 1s ease',
+                    }} />
+                    {/* Percentage label centered over bar */}
+                    <span style={{
+                      position: 'absolute', inset: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '10px', fontFamily: 'monospace', fontWeight: '700',
+                      color: battPct > 45 ? 'rgba(0,0,0,0.75)' : '#22c55e',
+                      letterSpacing: '0.5px', zIndex: 1,
+                    }}>
+                      {battPct}%
+                    </span>
+                  </div>
+                  {/* Terminal nub */}
+                  <div style={{
+                    width: '4px', height: '10px',
+                    background: 'rgba(255,255,255,0.12)',
+                    borderRadius: '0 2px 2px 0',
+                    flexShrink: 0,
                   }} />
-                  <div style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', width: '3px', height: '8px', background: 'rgba(255,255,255,0.18)', borderRadius: '0 2px 2px 0' }} />
                 </div>
-                <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
-                  {battPct}% · {battLabel}
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
+                  {battLabel}
                 </span>
               </div>
             )}

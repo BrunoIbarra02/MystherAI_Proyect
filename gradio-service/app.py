@@ -239,12 +239,12 @@ footer { display:none !important; }
 /* tabs */
 .tab-nav { background:#0a0a0a !important; border-bottom:1px solid #1c1c1c !important; }
 .tab-nav button {
-    color:#3a3a3a !important; font-size:10px !important; letter-spacing:2px !important;
+    color:#3a3a3a !important; font-size:11px !important; letter-spacing:2px !important;
     text-transform:uppercase !important; padding:12px 14px !important;
     border-radius:0 !important; border-bottom:2px solid transparent !important;
     background:transparent !important; font-weight:600 !important;
 }
-.tab-nav button.selected { color:#22c55e !important; border-bottom:2px solid #22c55e !important; }
+.tab-nav button.selected { color:#ffffff !important; border-bottom:2px solid #ffffff !important; }
 .tab-nav button:hover   { color:#888 !important; }
 
 /* blocks */
@@ -254,52 +254,52 @@ footer { display:none !important; }
 
 /* labels */
 label > span, .label-wrap > span {
-    color:#444 !important; font-size:10px !important;
+    color:#666 !important; font-size:12px !important;
     text-transform:uppercase !important; letter-spacing:1.5px !important; font-weight:600 !important;
 }
 
 /* inputs */
 input, textarea, .gr-input {
     background:#161616 !important; border:1px solid #222 !important;
-    color:#d4d4d4 !important; border-radius:6px !important; font-size:13px !important;
+    color:#d4d4d4 !important; border-radius:6px !important; font-size:14px !important;
 }
-input:focus, textarea:focus { border-color:#22c55e !important; box-shadow:0 0 0 2px rgba(34,197,94,0.1) !important; }
-input::placeholder, textarea::placeholder { color:#2a2a2a !important; }
+input:focus, textarea:focus { border-color:#555 !important; box-shadow:0 0 0 2px rgba(255,255,255,0.05) !important; }
+input::placeholder, textarea::placeholder { color:#333 !important; }
 
 /* select / dropdown */
 select, .gr-dropdown { background:#161616 !important; border:1px solid #222 !important; color:#d4d4d4 !important; }
 
 /* buttons */
 button.primary {
-    background:#22c55e !important; color:#000 !important; font-weight:700 !important;
+    background:#ffffff !important; color:#000 !important; font-weight:700 !important;
     border:none !important; border-radius:6px !important;
-    font-size:11px !important; letter-spacing:1.5px !important; text-transform:uppercase !important;
+    font-size:12px !important; letter-spacing:1.5px !important; text-transform:uppercase !important;
 }
-button.primary:hover { background:#16a34a !important; }
+button.primary:hover { background:#d4d4d4 !important; }
 button.secondary {
     background:#161616 !important; color:#555 !important;
     border:1px solid #222 !important; border-radius:6px !important;
-    font-size:11px !important; letter-spacing:1px !important;
+    font-size:12px !important; letter-spacing:1px !important;
 }
-button.secondary:hover { border-color:#22c55e !important; color:#22c55e !important; }
+button.secondary:hover { border-color:#888 !important; color:#aaa !important; }
 
 /* sliders */
-input[type=range] { accent-color:#22c55e !important; }
+input[type=range] { accent-color:#ffffff !important; }
 
 /* radio / checkbox */
-input[type=radio], input[type=checkbox] { accent-color:#22c55e !important; }
+input[type=radio], input[type=checkbox] { accent-color:#ffffff !important; }
 
 /* accordion */
-.gr-accordion { background:#0d0d0d !important; border:1px solid #1a2e1a !important; border-radius:8px !important; }
+.gr-accordion { background:#0d0d0d !important; border:1px solid #1c1c1c !important; border-radius:8px !important; }
 
 /* file upload */
 .upload-container { border:1px dashed #222 !important; background:#111 !important; border-radius:8px !important; }
-.upload-container:hover { border-color:#22c55e !important; }
+.upload-container:hover { border-color:#555 !important; }
 
 /* result URL box */
 .result-url textarea {
-    background:#0c1a0c !important; border:1px solid #1c3a1c !important;
-    color:#22c55e !important; font-family:monospace !important; font-size:11px !important;
+    background:#0c0c0c !important; border:1px solid #222 !important;
+    color:#888 !important; font-family:monospace !important; font-size:12px !important;
 }
 
 video, img { border-radius:8px !important; }
@@ -314,9 +314,9 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
     gr.HTML("""
     <div style="padding:20px 0 10px;border-bottom:1px solid #1c1c1c;margin-bottom:2px;">
       <div style="font-size:17px;font-weight:800;letter-spacing:3px;color:#fff;">
-        HECHICER<span style="color:#22c55e;">.IA</span> STUDIO
+        HECHICER<span style="color:#fff;">.IA</span> STUDIO
       </div>
-      <div style="font-size:9px;color:#2a2a2a;letter-spacing:3px;text-transform:uppercase;margin-top:3px;">
+      <div style="font-size:10px;color:#444;letter-spacing:3px;text-transform:uppercase;margin-top:3px;">
         AI Video Production Console — WaveSpeed
       </div>
     </div>
@@ -384,7 +384,7 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
 
         # ── 03  V2V TRANSFORM ────────────────────────────────────────────────
         with gr.Tab("03  V2V"):
-            gr.HTML('<div style="font-size:9px;color:#22c55e;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">VIDEO → VIDEO — Transformación completa de estilo</div>')
+            gr.HTML('<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">VIDEO → VIDEO — Transformación completa de estilo</div>')
 
             v2v_src_r = gr.Radio(
                 ["Archivo Local", "URL de Drive / Web"],
@@ -422,7 +422,7 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
 
             # registro inline — definido ANTES del botón para que .then() pueda referenciarlos
             with gr.Accordion("GUARDAR EN REGISTRO", open=False):
-                gr.HTML('<p style="color:#22c55e;font-size:9px;letter-spacing:2px;margin:0 0 10px;">Los campos URL y prompt se auto-completan al generar.</p>')
+                gr.HTML('<p style="color:#555;font-size:11px;letter-spacing:1.5px;margin:0 0 10px;">Los campos URL y prompt se auto-completan al generar.</p>')
                 with gr.Row():
                     v2v_reg_id   = gr.Textbox(label="ID Video")
                     v2v_reg_user = gr.Textbox(label="Miembro", value="Mateo")
@@ -472,7 +472,7 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
 
         # ── 04  MOTION CONTROL ───────────────────────────────────────────────
         with gr.Tab("04  MOTION"):
-            gr.HTML('<div style="font-size:9px;color:#22c55e;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">IMAGEN + VIDEO → Transferencia de movimiento — Kling V2.6</div>')
+            gr.HTML('<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">IMAGEN + VIDEO → Transferencia de movimiento — Kling V2.6</div>')
 
             with gr.Row():
                 with gr.Column(scale=1):
@@ -548,7 +548,7 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
                 ed_src_r, [ed_local, ed_url],
             )
 
-            gr.HTML('<hr><p style="color:#333;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">RECORTAR SEGMENTO</p>')
+            gr.HTML('<hr><p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">RECORTAR SEGMENTO</p>')
             with gr.Row():
                 cut_start = gr.Slider(0, 600, value=0,  step=0.5, label="Inicio (segundos)")
                 cut_end   = gr.Slider(0, 600, value=30, step=0.5, label="Fin (segundos)")
@@ -557,7 +557,7 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
             cut_result = gr.Video(label="Segmento Cortado")
             btn_cut.click(do_cut, [ed_local, ed_url, cut_start, cut_end, cut_name], cut_result)
 
-            gr.HTML('<hr><p style="color:#333;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">PARTIR EN PARTES IGUALES</p>')
+            gr.HTML('<hr><p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">PARTIR EN PARTES IGUALES</p>')
             with gr.Row():
                 split_n   = gr.Dropdown(["2","3","4","5"], value="2", label="Número de Partes")
                 split_pfx = gr.Textbox(label="Prefijos (separados por coma)", placeholder="intro, cuerpo, cierre")
@@ -565,7 +565,7 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
             split_result = gr.Textbox(label="Rutas generadas", interactive=False, lines=5)
             btn_split.click(do_split, [ed_local, ed_url, split_n, split_pfx], split_result)
 
-            gr.HTML('<hr><p style="color:#333;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">UNIR VIDEOS</p>')
+            gr.HTML('<hr><p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">UNIR VIDEOS</p>')
             merge_files  = gr.File(label="Selecciona los videos a unir", file_count="multiple", file_types=["video"])
             merge_name   = gr.Textbox(label="Nombre del resultado")
             btn_merge    = gr.Button("UNIR", variant="primary")
@@ -574,7 +574,7 @@ with gr.Blocks(title="Hechicer.ia Studio", css=CSS, theme=gr.themes.Base()) as d
 
         # ── ⚙  CONFIG ─────────────────────────────────────────────────────────
         with gr.Tab("⚙  CONFIG"):
-            gr.HTML('<p style="color:#333;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin:0 0 16px;">Configuración de la Sesión</p>')
+            gr.HTML('<p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 16px;">Configuración de la Sesión</p>')
             api_in   = gr.Textbox(label="WaveSpeed API Key", type="password",
                                   placeholder="ws-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
             api_stat = gr.Textbox(label="Estado", interactive=False)
