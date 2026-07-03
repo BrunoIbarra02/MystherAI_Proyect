@@ -11,6 +11,7 @@ from apps.sheets.models import VideoMetadata
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     permission_classes = []
+    authentication_classes = []
 
     def post(self, request):
         email = (request.data.get('username') or request.data.get('email') or '').strip()

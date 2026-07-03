@@ -98,6 +98,13 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.vercel.app",
     "https://*.amazonaws.com",
     "https://*.awsapprunner.com",
+    "https://*.mystherai.com",
+    "http://*.mystherai.com",
+]
+
+CORS_ALLOWED_ORIGINS += [
+    "https://gradio.mystherai.com",
+    "https://mystherai.com",
 ]
 
 SESSION_COOKIE_SAMESITE = "None"
