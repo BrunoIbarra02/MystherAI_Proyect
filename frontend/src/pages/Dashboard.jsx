@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApiKey } from '../context/ApiKeyContext';
 import AppNavbar from '../components/AppNavbar';
 
 /*
@@ -94,8 +93,7 @@ const PipeCard = ({ item, isOut, onClick }) => {
 
 /* ─── Dashboard ─────────────────────────────────────────────── */
 const Dashboard = () => {
-  const navigate   = useNavigate();
-  const { clearApiKey } = useApiKey();
+  const navigate = useNavigate();
 
   const [motorHov, setMotorHov] = React.useState(false);
 
@@ -105,32 +103,11 @@ const Dashboard = () => {
 
       <div style={{ maxWidth:'1060px', margin:'0 auto', padding:'28px 36px 48px' }}>
 
-        {/* Page meta — no logo (already in navbar), just context + logout */}
-        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:'4px' }}>
-          <div>
-            <p style={{ margin:0, fontSize:'11px', color:'#222', letterSpacing:'3px', textTransform:'uppercase' }}>
-              Pipeline de Producción · Fase 2
-            </p>
-          </div>
-          <button
-            onClick={() => { clearApiKey(); navigate('/'); }}
-            style={{
-              background:'transparent', border:'none', cursor:'pointer',
-              fontSize:'11px', color:'#1e1e1e', letterSpacing:'1.5px', textTransform:'uppercase',
-              padding:'4px 0', transition:'color .2s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#555'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = '#1e1e1e'; }}
-          >
-            Salir →
-          </button>
-        </div>
-
         {/* Column headers */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 44px 1fr', marginTop:'24px', marginBottom:'2px', paddingLeft:'2px' }}>
-          <span style={{ fontSize:'9px', color:'#1a1a1a', letterSpacing:'3px', textTransform:'uppercase', fontWeight:'700' }}>ENTRADA</span>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 44px 1fr', marginTop:'12px', marginBottom:'2px', paddingLeft:'2px' }}>
           <span />
-          <span style={{ fontSize:'9px', color:'#1a1a1a', letterSpacing:'3px', textTransform:'uppercase', fontWeight:'700' }}>SALIDA</span>
+          <span />
+          <span />
         </div>
 
         {/* Pairs */}
