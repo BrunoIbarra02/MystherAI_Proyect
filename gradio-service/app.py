@@ -117,7 +117,9 @@ def _ws_out(res):
 
 # ── Funciones principales ─────────────────────────────────────────────────────
 def on_load(request: gr.Request):
-    return request.query_params.get("api_key", DEFAULT_KEY)
+    api_key   = request.query_params.get("api_key", DEFAULT_KEY)
+    video_url = request.query_params.get("video_url", "")
+    return api_key, video_url
 
 def do_analyze(local, url):
     try:
@@ -406,8 +408,9 @@ hr { border:none; border-top:1px solid #1c1c1c; margin:18px 0; }
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base(), fill_height=True) as demo:
-    api_key_st = gr.State(DEFAULT_KEY)
-    demo.load(on_load, None, api_key_st)
+    api_key_st   = gr.State(DEFAULT_KEY)
+    preload_url  = gr.State("")
+    demo.load(on_load, None, [api_key_st, preload_url])
 
     gr.HTML(f"""
     <div style="display:flex;align-items:center;gap:14px;padding:16px 0 14px;border-bottom:1px solid #1c1c1c;margin-bottom:4px;">
@@ -444,6 +447,9 @@ with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base(), fill_h
             with gr.Row():
                 frame_out  = gr.Image(label="Fotograma Capturado", height=300, scale=2)
                 frame_path = gr.Textbox(label="Ruta guardada", interactive=False, lines=5, scale=1)
+
+            # Pre-fill URL if launched from Catálogo with ?video_url=...
+            demo.load(lambda u: gr.update(value=u) if u else gr.update(), preload_url, url_vid)
 
             src_radio.change(
                 lambda t: (gr.update(visible=t == "Archivo Local"),

@@ -25,7 +25,12 @@ class VideoMetadata(models.Model):
     especie = models.CharField(max_length=100, blank=True, null=True)
 
     # --- ENLACE PRINCIPAL ---
-    drive_link = models.URLField(max_length=1000, blank=True, null=True) # drive_link para el video principal
+    drive_link = models.URLField(max_length=1000, blank=True, null=True)
+
+    # --- ESTADO DE PRODUCCIÓN (sólo censo) ---
+    ESTADO_CENSO = [('Disponible', 'Disponible'), ('Reservado', 'Reservado'), ('Estilizado', 'Estilizado')]
+    estado_censo = models.CharField(max_length=20, choices=ESTADO_CENSO, default='Disponible', blank=True, null=True)
+    reservado_por = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"{self.video_id} - {self.tipo}"

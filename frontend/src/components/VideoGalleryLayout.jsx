@@ -2,9 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppNavbar from './AppNavbar';
 import api from '../utils/api';
+import { useApiKey } from '../context/ApiKeyContext';
+
+const GRADIO_BASE = 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860';
 
 const VideoGalleryLayout = ({ tipo, titulo }) => {
   const navigate = useNavigate();
+  const { apiKey } = useApiKey();
   const [videos, setVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -15,6 +19,11 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
   const isAdmin = true;
   const [formData, setFormData] = useState({});
   const [zoomImageUrl, setZoomImageUrl] = useState(null);
+
+  // Reservation state
+  const [reservaUsuario, setReservaUsuario] = useState('Mateo');
+  const [reservaLoading, setReservaLoading] = useState(false);
+  const [reservaMsg, setReservaMsg] = useState('');
   const [zoomLevel, setZoomLevel] = useState(1);
   const [zoomInputVal, setZoomInputVal] = useState(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
@@ -116,6 +125,32 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
       setSelectedVideo(null);
       fetchVideos();
     }
+  };
+
+  const handleReservar = async (videoId, usuario) => {
+    setReservaLoading(true); setReservaMsg('');
+    try {
+      const res = await api.post(`/sheets/videos/${videoId}/reservar/`, { usuario });
+      const updated = { ...selectedVideo, estado_censo: 'Reservado', reservado_por: usuario };
+      setSelectedVideo(updated);
+      setVideos(vs => vs.map(v => v.id === videoId ? updated : v));
+      setReservaMsg('✓ Video reservado. Puedes abrirlo en Gradio.');
+    } catch (err) {
+      setReservaMsg(err.response?.data?.error || 'Error al reservar.');
+    } finally { setReservaLoading(false); }
+  };
+
+  const handleLiberar = async (videoId, usuario) => {
+    setReservaLoading(true); setReservaMsg('');
+    try {
+      await api.post(`/sheets/videos/${videoId}/liberar/`, { usuario });
+      const updated = { ...selectedVideo, estado_censo: 'Disponible', reservado_por: null };
+      setSelectedVideo(updated);
+      setVideos(vs => vs.map(v => v.id === videoId ? updated : v));
+      setReservaMsg('Reserva liberada.');
+    } catch (err) {
+      setReservaMsg(err.response?.data?.error || 'Error al liberar.');
+    } finally { setReservaLoading(false); }
   };
 
   const handleOpenOriginalVideoRegistro = (originalLink) => {
@@ -225,14 +260,15 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
             {isAdmin && <button onClick={() => { setFormData({}); setShowAddForm(true); }} className="neon-button add-btn">+ ANADIR NUEVO</button>}
           </div>
           <div className="advanced-filters-center">
-            {Object.entries(filterOptions)
-              .filter(([key]) => tipo !== 'censo' || !['estilizado', 'aceptado'].includes(key))
-              .map(([key, opts]) => (
+            {Object.entries(filterOptions).map(([key, opts]) => {
+              const label = key === 'estado_censo' ? 'ESTADO' : key.toUpperCase();
+              return (
                 <select key={key} className="glass-select-mini" value={filters[key] || ""} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })}>
-                  <option value="">{key.toUpperCase()}</option>
+                  <option value="">{label}</option>
                   {opts.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
-              ))}
+              );
+            })}
           </div>
         </header>
 
@@ -445,15 +481,85 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                         )}
                       </>
                     ) : (
-                      <div className="modal-grid-metadata" style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', width: '100%', marginTop: '20px' }}>
-                        <div className="meta-box"><label style={{ color: 'gray' }}>ID VIDEO EQUIPO</label><p>{selectedVideo.id_video_equipo || 'N/A'}</p></div>
-                        <div className="meta-box"><label style={{ color: 'gray' }}>MAPA</label><p>{selectedVideo.mapa || 'N/A'}</p></div>
-                        <div className="meta-box"><label style={{ color: 'gray' }}>GENERO</label><p>{selectedVideo.genero || 'N/A'}</p></div>
-                        <div className="meta-box"><label style={{ color: 'gray' }}>ETNIA</label><p>{selectedVideo.etnia || 'N/A'}</p></div>
-                        <div className="meta-box"><label style={{ color: 'gray' }}>DURACION</label><p>{selectedVideo.duracion || 'N/A'}</p></div>
-                        <div className="meta-box"><label style={{ color: 'gray' }}>CAMARA</label><p>{selectedVideo.camara || 'N/A'}</p></div>
-                        <div className="meta-box"><label style={{ color: 'gray' }}>ESPECIE</label><p>{selectedVideo.especie || 'N/A'}</p></div>
-                      </div>
+                      <>
+                        <div className="modal-grid-metadata" style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', width: '100%', marginTop: '20px' }}>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>ID VIDEO EQUIPO</label><p>{selectedVideo.id_video_equipo || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>MAPA</label><p>{selectedVideo.mapa || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>GENERO</label><p>{selectedVideo.genero || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>ETNIA</label><p>{selectedVideo.etnia || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>DURACION</label><p>{selectedVideo.duracion || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>CAMARA</label><p>{selectedVideo.camara || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>ESPECIE</label><p>{selectedVideo.especie || 'N/A'}</p></div>
+                        </div>
+
+                        {/* ── PANEL DE RESERVA ── */}
+                        {(() => {
+                          const est = selectedVideo.estado_censo || 'Disponible';
+                          const estadoColor = { Disponible: '#22c55e', Reservado: '#f59e0b', Estilizado: '#6b7280' }[est] || '#6b7280';
+                          const gradioUrl = `${GRADIO_BASE}/?api_key=${encodeURIComponent(apiKey || '')}&video_url=${encodeURIComponent(selectedVideo.drive_link || '')}`;
+                          return (
+                            <div style={{ gridColumn: '1/-1', marginTop: '20px', padding: '18px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid #1e1e1e', borderRadius: '10px' }}>
+                              {/* Estado badge */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                                <span style={{ fontSize: '9px', letterSpacing: '2px', color: '#444', textTransform: 'uppercase', fontWeight: 700 }}>ESTADO DE PRODUCCIÓN</span>
+                                <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', background: `${estadoColor}22`, color: estadoColor, border: `1px solid ${estadoColor}44` }}>
+                                  {est.toUpperCase()}
+                                </span>
+                                {est === 'Reservado' && selectedVideo.reservado_por && (
+                                  <span style={{ fontSize: '11px', color: '#555' }}>por {selectedVideo.reservado_por}</span>
+                                )}
+                              </div>
+
+                              {/* Actions */}
+                              {est === 'Disponible' && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '11px', color: '#555', letterSpacing: '1px' }}>RESERVAR COMO:</span>
+                                  <select value={reservaUsuario} onChange={e => { setReservaUsuario(e.target.value); setReservaMsg(''); }}
+                                    style={{ background: '#111', border: '1px solid #333', color: '#ccc', borderRadius: '6px', padding: '6px 10px', fontSize: '12px' }}>
+                                    <option>Mateo</option>
+                                    <option>Miguel</option>
+                                  </select>
+                                  <button
+                                    disabled={reservaLoading}
+                                    onClick={() => handleReservar(selectedVideo.id, reservaUsuario)}
+                                    style={{ padding: '8px 20px', background: '#22c55e', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '11px', letterSpacing: '1.5px', cursor: 'pointer', opacity: reservaLoading ? 0.6 : 1 }}>
+                                    {reservaLoading ? '...' : 'RESERVAR PARA ESTILIZAR'}
+                                  </button>
+                                </div>
+                              )}
+
+                              {est === 'Reservado' && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                  {apiKey && selectedVideo.drive_link && (
+                                    <button
+                                      onClick={() => window.open(gradioUrl, '_blank')}
+                                      style={{ padding: '8px 22px', background: '#fff', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '11px', letterSpacing: '1.5px', cursor: 'pointer' }}>
+                                      ABRIR EN GRADIO →
+                                    </button>
+                                  )}
+                                  {!apiKey && (
+                                    <span style={{ fontSize: '11px', color: '#555' }}>Activa tu API Key en Estudio para abrir Gradio con este video precargado.</span>
+                                  )}
+                                  <button
+                                    disabled={reservaLoading}
+                                    onClick={() => handleLiberar(selectedVideo.id, selectedVideo.reservado_por)}
+                                    style={{ padding: '8px 16px', background: 'transparent', color: '#f59e0b', border: '1px solid #f59e0b44', borderRadius: '6px', fontWeight: 700, fontSize: '11px', letterSpacing: '1px', cursor: 'pointer', opacity: reservaLoading ? 0.6 : 1 }}>
+                                    {reservaLoading ? '...' : 'LIBERAR RESERVA'}
+                                  </button>
+                                </div>
+                              )}
+
+                              {est === 'Estilizado' && (
+                                <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>Este video ya fue procesado y guardado en Biblioteca.</p>
+                              )}
+
+                              {reservaMsg && (
+                                <p style={{ marginTop: '10px', fontSize: '12px', color: reservaMsg.startsWith('✓') ? '#22c55e' : '#f87171', margin: '10px 0 0' }}>{reservaMsg}</p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </>
                     )}
                   </div>
                 )}

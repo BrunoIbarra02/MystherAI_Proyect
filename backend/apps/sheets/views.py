@@ -18,7 +18,7 @@ class VideoListView(generics.ListCreateAPIView):
         tipo = self.request.query_params.get('tipo')
         search = self.request.query_params.get('search')
         if tipo: queryset = queryset.filter(tipo__iexact=tipo)
-        for f in ['usuario', 'mapa', 'etnia', 'estilizado', 'aceptado', 'genero', 'especie', 'camara', 'mateo_miguel']:
+        for f in ['usuario', 'mapa', 'etnia', 'estilizado', 'aceptado', 'genero', 'especie', 'camara', 'mateo_miguel', 'estado_censo']:
             val = self.request.query_params.get(f)
             if val: queryset = queryset.filter(**{f"{f}__icontains": val})
         if search:
@@ -34,7 +34,10 @@ class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
 class FilterOptionsView(APIView):
     def get(self, request):
         tipo = request.query_params.get('tipo', 'censo').lower()
-        fields_to_filter = ["usuario", "mapa", "genero", "etnia", "camara", "especie", "estilizado", "aceptado"]
+        if tipo == 'censo':
+            fields_to_filter = ["usuario", "mapa", "genero", "etnia", "camara", "especie"]
+        else:
+            fields_to_filter = ["usuario", "estilizado", "aceptado", "mateo_miguel"]
         options = {}
 
         for field_name in fields_to_filter:
@@ -53,6 +56,11 @@ class FilterOptionsView(APIView):
                     cleaned_values = [v for v in cleaned_values if v.lower() not in censo_users]
 
             options[field_name] = sorted(list(set(cleaned_values)))
+
+        # Estado de producción siempre disponible para censo
+        if tipo == 'censo':
+            options['estado_censo'] = ['Disponible', 'Reservado', 'Estilizado']
+
         return Response(options)
 
 
@@ -1303,3 +1311,84 @@ class ExtractMetadataView(APIView):
             'mensaje': f'Extracción iniciada en segundo plano (limit={limite or "sin límite"}).',
             'nota': 'Consulta GET /api/sheets/extract-metadata/ para ver el progreso.',
         })
+
+
+# ── SISTEMA DE RESERVAS (Censo) ──────────────────────────────────────────────
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ReservarVideoView(APIView):
+    """Reserva un video de Censo para estilización. Falla si ya está Reservado o Estilizado."""
+    permission_classes = []
+
+    def post(self, request, pk):
+        try:
+            video = VideoMetadata.objects.get(pk=pk, tipo='censo')
+        except VideoMetadata.DoesNotExist:
+            return Response({'error': 'Video no encontrado en el Catálogo.'}, status=status.HTTP_404_NOT_FOUND)
+
+        estado_actual = video.estado_censo or 'Disponible'
+        if estado_actual == 'Reservado':
+            return Response({
+                'error': f'Este video ya está reservado por {video.reservado_por}.',
+                'estado': estado_actual,
+            }, status=status.HTTP_409_CONFLICT)
+        if estado_actual == 'Estilizado':
+            return Response({
+                'error': 'Este video ya fue estilizado.',
+                'estado': estado_actual,
+            }, status=status.HTTP_409_CONFLICT)
+
+        usuario = (request.data.get('usuario') or '').strip()
+        if not usuario:
+            return Response({'error': 'Indica tu nombre de usuario.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        video.estado_censo = 'Reservado'
+        video.reservado_por = usuario
+        video.save(update_fields=['estado_censo', 'reservado_por'])
+
+        return Response({
+            'ok': True,
+            'estado': 'Reservado',
+            'reservado_por': usuario,
+            'drive_link': video.drive_link,
+            'video_id': video.video_id,
+        }, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class LiberarVideoView(APIView):
+    """Libera la reserva de un video (sólo el usuario que lo reservó puede liberarlo)."""
+    permission_classes = []
+
+    def post(self, request, pk):
+        try:
+            video = VideoMetadata.objects.get(pk=pk, tipo='censo')
+        except VideoMetadata.DoesNotExist:
+            return Response({'error': 'Video no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        usuario = (request.data.get('usuario') or '').strip()
+        if video.estado_censo != 'Reservado':
+            return Response({'error': 'El video no está reservado.'}, status=status.HTTP_400_BAD_REQUEST)
+        if video.reservado_por != usuario:
+            return Response({'error': f'Solo {video.reservado_por} puede liberar esta reserva.'}, status=status.HTTP_403_FORBIDDEN)
+
+        video.estado_censo = 'Disponible'
+        video.reservado_por = None
+        video.save(update_fields=['estado_censo', 'reservado_por'])
+        return Response({'ok': True, 'estado': 'Disponible'}, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class MarcarEstilizadoView(APIView):
+    """Marca un video de Censo como Estilizado (llamado automáticamente al guardar en Registro)."""
+    permission_classes = []
+
+    def post(self, request, pk):
+        try:
+            video = VideoMetadata.objects.get(pk=pk, tipo='censo')
+        except VideoMetadata.DoesNotExist:
+            return Response({'error': 'Video no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        video.estado_censo = 'Estilizado'
+        video.save(update_fields=['estado_censo'])
+        return Response({'ok': True, 'estado': 'Estilizado'}, status=status.HTTP_200_OK)
