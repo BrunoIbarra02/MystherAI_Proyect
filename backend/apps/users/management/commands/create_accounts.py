@@ -20,14 +20,14 @@ ACCOUNTS = [
     },
     {
         'email': 'manuelchavesta@gmail.com',
-        'first_name': 'Manuel',
+        'first_name': 'Wilson',
         'last_name': '',
         'is_staff': False,
         'is_superuser': False,
     },
     {
         'email': 'landeo18cristobalr@gmail.com',
-        'first_name': 'Cristobal',
+        'first_name': 'Olenka',
         'last_name': '',
         'is_staff': False,
         'is_superuser': False,
