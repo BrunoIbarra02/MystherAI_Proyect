@@ -32,6 +32,13 @@ ACCOUNTS = [
         'is_staff': False,
         'is_superuser': False,
     },
+    {
+        'email': 'fabio.ramos.reyes@gmail.com',
+        'first_name': 'Fabio',
+        'last_name': '',
+        'is_staff': False,
+        'is_superuser': False,
+    },
 ]
 
 PASSWORD = 'Mystherai2026'
