@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Sun, Moon, User } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
@@ -16,8 +16,10 @@ import logoImg from '../assets/logo.jpeg';
  */
 const AppNavbar = ({ backTo, backLabel = 'Dashboard', rightSlot }) => {
   const navigate   = useNavigate();
+  const location   = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { user } = useUser();
+  const onProfile  = location.pathname === '/profile';
 
   return (
     <nav className="app-navbar">
@@ -38,8 +40,8 @@ const AppNavbar = ({ backTo, backLabel = 'Dashboard', rightSlot }) => {
       {/* Slot para contenido personalizado por cada página */}
       {rightSlot}
 
-      {/* Usuario logueado */}
-      {user && (
+      {/* Usuario logueado — ocultar en la propia página de perfil */}
+      {user && !onProfile && (
         <button
           onClick={() => navigate('/profile')}
           title="Ver perfil"

@@ -34,6 +34,7 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
   const [battPct,   setBattPct]   = useState(0);
   const [battLabel, setBattLabel] = useState('');
+  const [avatars, setAvatars] = useState({});
 
   const extractDriveID = useCallback((url) => {
     if (!url || typeof url !== 'string' || url.trim() === '') return null;
@@ -67,6 +68,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
   useEffect(() => {
     api.get(`/sheets/filter-options/?tipo=${tipo}`).then(res => setFilterOptions(res.data));
+    if (tipo === 'censo') {
+      api.get('/auth/avatars/').then(res => setAvatars(res.data)).catch(() => {});
+    }
   }, [tipo]);
 
   useEffect(() => {
@@ -305,6 +309,25 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                       </span>
                     </div>
                     <div className="play-btn">▶</div>
+                    {/* Avatar del usuario que reservó/estilizó */}
+                    {v.tipo === 'censo' && v.reservado_por && (
+                      <div title={v.reservado_por} style={{
+                        position: 'absolute', bottom: '8px', right: '8px',
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        border: '2px solid rgba(255,255,255,0.6)',
+                        overflow: 'hidden', flexShrink: 0,
+                        background: 'linear-gradient(135deg,#3a3a3a,#777)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '10px', fontWeight: '800', color: '#fff',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                      }}>
+                        {avatars[v.reservado_por]
+                          ? <img src={avatars[v.reservado_por]} alt={v.reservado_por}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : (v.reservado_por || '?').slice(0, 2).toUpperCase()
+                        }
+                      </div>
+                    )}
                   </div>
                   <div className="yt-info">
                     <h3 className="yt-title" style={{ color: 'var(--neon-cyan)' }}>

@@ -9,7 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'display_name']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'display_name', 'avatar']
 
     def get_display_name(self, obj):
         return obj.first_name or obj.username.split('@')[0]

@@ -79,6 +79,36 @@ class ProfileDataView(APIView):
         })
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class UpdateAvatarView(APIView):
+    """Save base64 avatar for the logged-in user."""
+
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        avatar = (request.data.get('avatar') or '').strip()
+        if not avatar:
+            return Response({'error': 'No avatar provided'}, status=status.HTTP_400_BAD_REQUEST)
+        request.user.avatar = avatar
+        request.user.save(update_fields=['avatar'])
+        return Response({'ok': True, 'avatar': avatar})
+
+
+class AvatarsMapView(APIView):
+    """Returns {display_name: avatar_url} for all users with an avatar."""
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        result = {}
+        for u in User.objects.exclude(avatar__isnull=True).exclude(avatar=''):
+            name = u.first_name or u.username.split('@')[0]
+            result[name] = u.avatar
+        return Response(result)
+
+
 class LogoutView(APIView):
     def post(self, request):
         logout(request)

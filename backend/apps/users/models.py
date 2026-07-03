@@ -3,6 +3,7 @@ from django.db import models
 
 class User(AbstractUser):
     api_key_wavespeed = models.CharField(max_length=255, blank=True, null=True)
+    avatar = models.TextField(blank=True, null=True)
 
     class Meta:
         app_label = 'users'
