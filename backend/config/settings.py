@@ -105,6 +105,11 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = True
 
+AUTHENTICATION_BACKENDS = [
+    "apps.authentication.backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
 # ========== REST FRAMEWORK ==========
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

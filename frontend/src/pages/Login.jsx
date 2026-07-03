@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import logoImg from '../assets/logo.jpeg';
 import api from '../utils/api';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
 
 /**
  * Página de Login — Diseño rediseñado con paleta del logo (negro/plata).
@@ -19,6 +20,7 @@ const Login = () => {
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { setUser } = useUser();
 
   // Animación de entrada al montar
   useEffect(() => {
@@ -32,12 +34,13 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await api.post('/auth/login/', { username, password });
+      const response = await api.post('/auth/login/', { email: username, password });
       if (response.status === 200) {
+        setUser(response.data.user);
         navigate('/dashboard');
       }
     } catch (err) {
-      setError('Usuario o contraseña incorrectos');
+      setError('Correo o contraseña incorrectos');
     } finally {
       setLoading(false);
     }
@@ -81,21 +84,21 @@ const Login = () => {
 
         {/* Formulario */}
         <form onSubmit={handleLogin} style={s.form}>
-          {/* Campo de usuario */}
+          {/* Campo de correo */}
           <div style={s.fieldGroup}>
-            <label style={s.label}>Usuario</label>
+            <label style={s.label}>Correo Electrónico</label>
             <div style={s.inputWrapper}>
-              <User size={16} color="var(--silver-dim)" style={s.inputIcon} />
+              <Mail size={16} color="var(--silver-dim)" style={s.inputIcon} />
               <input
-                type="text"
-                placeholder="Nombre de usuario"
+                type="email"
+                placeholder="correo@ejemplo.com"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 style={s.input}
                 onFocus={(e) => Object.assign(e.target.style, s.inputFocus)}
                 onBlur={(e) => Object.assign(e.target.style, s.inputBlur)}
                 required
-                autoComplete="username"
+                autoComplete="email"
               />
             </div>
           </div>

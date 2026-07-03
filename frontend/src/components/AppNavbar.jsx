@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, User } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
 import logoImg from '../assets/logo.jpeg';
 
 /**
@@ -16,6 +17,7 @@ import logoImg from '../assets/logo.jpeg';
 const AppNavbar = ({ backTo, backLabel = 'Dashboard', rightSlot }) => {
   const navigate   = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useUser();
 
   return (
     <nav className="app-navbar">
@@ -35,6 +37,28 @@ const AppNavbar = ({ backTo, backLabel = 'Dashboard', rightSlot }) => {
 
       {/* Slot para contenido personalizado por cada página */}
       {rightSlot}
+
+      {/* Usuario logueado */}
+      {user && (
+        <button
+          onClick={() => navigate('/profile')}
+          title="Ver perfil"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            padding: '7px 14px', borderRadius: '20px',
+            background: 'rgba(192,192,192,0.07)',
+            border: '1px solid rgba(192,192,192,0.14)',
+            color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: '600',
+            cursor: 'pointer', letterSpacing: '0.3px',
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(192,192,192,0.13)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(192,192,192,0.07)'}
+        >
+          <User size={13} strokeWidth={2.2} />
+          {user.display_name}
+        </button>
+      )}
 
       {/* Botón de cambio de tema */}
       <button

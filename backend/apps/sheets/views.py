@@ -1326,7 +1326,7 @@ class ExtractMetadataView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ReservarVideoView(APIView):
-    """Reserva un video de Censo para estilización. Falla si ya está Reservado o Estilizado."""
+    """Reserva un video de Censo para estilización."""
     permission_classes = []
 
     def post(self, request, pk):
@@ -1342,31 +1342,28 @@ class ReservarVideoView(APIView):
                 'estado': estado_actual,
             }, status=status.HTTP_409_CONFLICT)
         if estado_actual == 'Estilizado':
-            return Response({
-                'error': 'Este video ya fue estilizado.',
-                'estado': estado_actual,
-            }, status=status.HTTP_409_CONFLICT)
+            return Response({'error': 'Este video ya fue estilizado.', 'estado': estado_actual},
+                            status=status.HTTP_409_CONFLICT)
 
-        usuario = (request.data.get('usuario') or '').strip()
-        if not usuario:
-            return Response({'error': 'Indica tu nombre de usuario.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Resolve who is reserving: logged-in user takes priority
+        if request.user.is_authenticated:
+            nombre = request.user.first_name or request.user.username.split('@')[0]
+        else:
+            nombre = (request.data.get('usuario') or '').strip()
+        if not nombre:
+            return Response({'error': 'No se pudo identificar al usuario.'}, status=status.HTTP_400_BAD_REQUEST)
 
         video.estado_censo = 'Reservado'
-        video.reservado_por = usuario
+        video.reservado_por = nombre
         video.save(update_fields=['estado_censo', 'reservado_por'])
-
-        return Response({
-            'ok': True,
-            'estado': 'Reservado',
-            'reservado_por': usuario,
-            'drive_link': video.drive_link,
-            'video_id': video.video_id,
-        }, status=status.HTTP_200_OK)
+        return Response({'ok': True, 'estado': 'Reservado', 'reservado_por': nombre,
+                         'drive_link': video.drive_link, 'video_id': video.video_id},
+                        status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LiberarVideoView(APIView):
-    """Libera la reserva de un video (sólo el usuario que lo reservó puede liberarlo)."""
+    """Libera la reserva de un video. Admin puede liberar cualquiera."""
     permission_classes = []
 
     def post(self, request, pk):
@@ -1375,11 +1372,19 @@ class LiberarVideoView(APIView):
         except VideoMetadata.DoesNotExist:
             return Response({'error': 'Video no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        usuario = (request.data.get('usuario') or '').strip()
         if video.estado_censo != 'Reservado':
             return Response({'error': 'El video no está reservado.'}, status=status.HTTP_400_BAD_REQUEST)
-        if video.reservado_por != usuario:
-            return Response({'error': f'Solo {video.reservado_por} puede liberar esta reserva.'}, status=status.HTTP_403_FORBIDDEN)
+
+        is_admin = request.user.is_authenticated and request.user.is_staff
+        if not is_admin:
+            # Non-admin: can only release their own reservation
+            if request.user.is_authenticated:
+                nombre = request.user.first_name or request.user.username.split('@')[0]
+            else:
+                nombre = (request.data.get('usuario') or '').strip()
+            if video.reservado_por.lower() != nombre.lower():
+                return Response({'error': f'Solo {video.reservado_por} o un admin puede liberar esta reserva.'},
+                                status=status.HTTP_403_FORBIDDEN)
 
         video.estado_censo = 'Disponible'
         video.reservado_por = None

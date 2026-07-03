@@ -1,174 +1,330 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Settings, Shield } from "lucide-react";
-import logoImg from "../assets/logo.jpeg";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Video, CheckCircle, Users, LogOut } from 'lucide-react';
+import AppNavbar from '../components/AppNavbar';
+import api from '../utils/api';
+import { useUser } from '../context/UserContext';
+import { useApiKey } from '../context/ApiKeyContext';
 
-/**
- * Perfil del usuario — Página en construcción.
- * Muestra navbar con logo y contenido placeholder estilizado.
- */
+const GRADIO_BASE = 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860';
+
 const Profile = () => {
   const navigate = useNavigate();
+  const { user, logout } = useUser();
+  const { apiKey } = useApiKey();
+  const [data, setData]     = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab]       = useState('reservados');
+  const [liberando, setLiberando] = useState(null);
+
+  useEffect(() => {
+    if (!user) { navigate('/'); return; }
+    api.get('/auth/profile-data/')
+      .then(r => setData(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  const handleLiberar = async (videoId) => {
+    setLiberando(videoId);
+    try {
+      await api.post(`/sheets/videos/${videoId}/liberar/`);
+      // refresh
+      const r = await api.get('/auth/profile-data/');
+      setData(r.data);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al liberar.');
+    } finally { setLiberando(null); }
+  };
+
+  const gradioUrl = (driveLink) =>
+    `${GRADIO_BASE}/?api_key=${encodeURIComponent(apiKey || '')}&video_url=${encodeURIComponent(driveLink || '')}`;
+
+  if (!user || loading) {
+    return (
+      <>
+        <AppNavbar backTo="/dashboard" />
+        <div style={s.center}><div style={s.spinner} /></div>
+      </>
+    );
+  }
+
+  const initials = (user.display_name || 'U').slice(0, 2).toUpperCase();
+  const reserved   = data?.reserved   || [];
+  const stylized   = data?.stylized   || [];
+  const allReservations = data?.all_reservations || [];
 
   return (
     <>
-      {/* Navbar superior */}
-      <nav className="app-navbar">
-        <div className="navbar-logo">
-          <img src={logoImg} alt="MystherAI" className="navbar-logo-img" />
-          <span className="navbar-logo-text">MystherAI</span>
-        </div>
-        <div className="navbar-spacer" />
-        <button
-          className="navbar-back-btn"
-          onClick={() => navigate("/dashboard")}
-        >
-          <ArrowLeft size={15} />
-          Dashboard
-        </button>
-      </nav>
+      <AppNavbar backTo="/dashboard" />
+      <div style={s.page}>
 
-      {/* Contenido principal */}
-      <div style={styles.container}>
-        {/* Encabezado de sección */}
-        <div style={styles.header}>
-          <div style={styles.iconWrapper}>
-            <User size={32} color="var(--silver-mid)" />
+        {/* ─── USER CARD ─── */}
+        <div style={s.userCard}>
+          <div style={s.avatar}>{initials}</div>
+          <div style={s.userInfo}>
+            <h2 style={s.displayName}>{user.display_name}</h2>
+            <p style={s.email}>{user.username}</p>
+            {user.is_staff && <span style={s.adminBadge}>ADMIN</span>}
           </div>
-          <h1 style={styles.title}>Perfil de Usuario</h1>
-          <p style={styles.subtitle}>Configuración y preferencias de la cuenta</p>
-        </div>
-
-        {/* Tarjeta "En construcción" */}
-        <div className="glass-panel" style={styles.card}>
-          <div style={styles.constructionIcon}>🐇</div>
-          <h2 style={styles.cardTitle}>En Construcción</h2>
-          <p style={styles.cardDesc}>
-            Esta sección será utilizada para configuración avanzada de la cuenta,
-            preferencias del sistema y gestión de credenciales.
-          </p>
-
-          {/* Items de próximas funcionalidades */}
-          <div style={styles.featureList}>
-            {[
-              { icon: <User size={16} />,    label: 'Información personal' },
-              { icon: <Settings size={16} />, label: 'Preferencias del sistema' },
-              { icon: <Shield size={16} />,   label: 'Seguridad y acceso' },
-            ].map((item, i) => (
-              <div key={i} style={styles.featureItem} className="animate-in">
-                <span style={styles.featureIcon}>{item.icon}</span>
-                <span style={styles.featureLabel}>{item.label}</span>
-                <span style={styles.featureBadge}>Próximamente</span>
-              </div>
-            ))}
-          </div>
-
-          <button
-            className="btn-secondary"
-            style={{ marginTop: '24px' }}
-            onClick={() => navigate('/dashboard')}
-          >
-            Volver al Dashboard
+          <button onClick={handleLogout} style={s.logoutBtn}>
+            <LogOut size={14} />
+            Cerrar sesión
           </button>
         </div>
+
+        {/* ─── STATS ─── */}
+        <div style={s.statsRow}>
+          <div style={s.statBox}>
+            <span style={s.statNum}>{reserved.length}</span>
+            <span style={s.statLabel}>Reservados</span>
+          </div>
+          <div style={s.statBox}>
+            <span style={s.statNum}>{stylized.length}</span>
+            <span style={s.statLabel}>Estilizados</span>
+          </div>
+          {user.is_staff && (
+            <div style={s.statBox}>
+              <span style={s.statNum}>{allReservations.length}</span>
+              <span style={s.statLabel}>Equipo activo</span>
+            </div>
+          )}
+        </div>
+
+        {/* ─── TABS ─── */}
+        <div style={s.tabBar}>
+          <button style={{ ...s.tabBtn, ...(tab === 'reservados' ? s.tabActive : {}) }}
+            onClick={() => setTab('reservados')}>
+            <Video size={14} /> Mis Reservas ({reserved.length})
+          </button>
+          <button style={{ ...s.tabBtn, ...(tab === 'estilizados' ? s.tabActive : {}) }}
+            onClick={() => setTab('estilizados')}>
+            <CheckCircle size={14} /> Estilizados ({stylized.length})
+          </button>
+          {user.is_staff && (
+            <button style={{ ...s.tabBtn, ...(tab === 'equipo' ? s.tabActive : {}) }}
+              onClick={() => setTab('equipo')}>
+              <Users size={14} /> Equipo ({allReservations.length})
+            </button>
+          )}
+        </div>
+
+        {/* ─── RESERVADOS ─── */}
+        {tab === 'reservados' && (
+          reserved.length === 0
+            ? <EmptyState text="No tienes videos reservados actualmente." />
+            : <div style={s.list}>
+                {reserved.map(v => (
+                  <VideoRow key={v.id} video={v}
+                    actions={
+                      <div style={s.rowActions}>
+                        {apiKey && v.drive_link && (
+                          <a href={gradioUrl(v.drive_link)} target="_blank" rel="noreferrer" style={s.openBtn}>
+                            ABRIR EN GRADIO →
+                          </a>
+                        )}
+                        <button
+                          disabled={liberando === v.id}
+                          onClick={() => handleLiberar(v.id)}
+                          style={s.liberarBtn}>
+                          {liberando === v.id ? '...' : 'LIBERAR'}
+                        </button>
+                      </div>
+                    }
+                  />
+                ))}
+              </div>
+        )}
+
+        {/* ─── ESTILIZADOS ─── */}
+        {tab === 'estilizados' && (
+          stylized.length === 0
+            ? <EmptyState text="Aún no has estilizado ningún video." />
+            : <div style={s.list}>
+                {stylized.map(v => (
+                  <VideoRow key={v.id} video={v} badgeColor="#22c55e" badgeText="ESTILIZADO" />
+                ))}
+              </div>
+        )}
+
+        {/* ─── EQUIPO (admin only) ─── */}
+        {tab === 'equipo' && user.is_staff && (
+          allReservations.length === 0
+            ? <EmptyState text="No hay reservas activas en el equipo." />
+            : <div style={s.list}>
+                {allReservations.map(v => (
+                  <VideoRow key={v.id} video={v}
+                    extra={<span style={s.reserverTag}>→ {v.reservado_por}</span>}
+                    actions={
+                      <button
+                        disabled={liberando === v.id}
+                        onClick={() => handleLiberar(v.id)}
+                        style={s.liberarBtn}>
+                        {liberando === v.id ? '...' : 'LIBERAR'}
+                      </button>
+                    }
+                  />
+                ))}
+              </div>
+        )}
       </div>
     </>
   );
 };
 
-const styles = {
-  container: {
-    paddingTop:  '84px',
-    maxWidth:    '700px',
-    margin:      '0 auto',
-    padding:     '84px 24px 60px',
-    minHeight:   '100vh',
+const VideoRow = ({ video, actions, extra, badgeColor = '#f59e0b', badgeText }) => (
+  <div style={s.videoRow}>
+    <div style={s.videoRowLeft}>
+      <span style={s.videoId}>#{video.id_video_equipo || video.video_id}</span>
+      <span style={s.videoMeta}>{video.mapa || '—'} · {video.especie || '—'}</span>
+      {badgeText && (
+        <span style={{ ...s.badge, background: `${badgeColor}22`, color: badgeColor, borderColor: `${badgeColor}44` }}>
+          {badgeText}
+        </span>
+      )}
+      {extra}
+    </div>
+    {actions && <div style={s.rowActions}>{actions}</div>}
+  </div>
+);
+
+const EmptyState = ({ text }) => (
+  <div style={s.empty}>
+    <span style={{ fontSize: '32px', opacity: 0.2 }}>📭</span>
+    <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px', margin: '12px 0 0' }}>{text}</p>
+  </div>
+);
+
+const s = {
+  page: {
+    paddingTop: '84px',
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '84px 24px 60px',
+    minHeight: '100vh',
   },
-  header: {
-    textAlign:    'center',
-    marginBottom: '36px',
+  center: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    minHeight: '80vh',
   },
-  iconWrapper: {
-    display:         'inline-flex',
-    padding:         '18px',
-    background:      'rgba(192,192,192,0.06)',
-    borderRadius:    '18px',
-    border:          '1px solid rgba(192,192,192,0.12)',
-    marginBottom:    '20px',
+  spinner: {
+    width: '36px', height: '36px',
+    border: '3px solid rgba(255,255,255,0.1)',
+    borderTop: '3px solid rgba(192,192,192,0.6)',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
   },
-  title: {
-    fontFamily:   "'Outfit', 'Inter', sans-serif",
-    fontSize:     '2rem',
-    fontWeight:   '700',
-    color:        '#f0f0f0',
-    margin:       '0 0 8px',
-    letterSpacing:'0.5px',
+  userCard: {
+    display: 'flex', alignItems: 'center', gap: '20px',
+    padding: '24px 28px',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '16px',
+    marginBottom: '24px',
+    flexWrap: 'wrap',
   },
-  subtitle: {
-    color:        'rgba(255,255,255,0.35)',
-    fontSize:     '0.9rem',
-    margin:       0,
-  },
-  card: {
-    padding:   '40px',
-    textAlign: 'center',
-  },
-  constructionIcon: {
-    fontSize:     '48px',
-    marginBottom: '16px',
-    display:      'block',
-    animation:    'logoFloat 4s ease-in-out infinite',
-  },
-  cardTitle: {
-    fontFamily:   "'Outfit', 'Inter', sans-serif",
-    fontSize:     '1.4rem',
-    fontWeight:   '700',
-    color:        '#e0e0e0',
-    margin:       '0 0 12px',
-  },
-  cardDesc: {
-    color:       'rgba(255,255,255,0.45)',
-    fontSize:    '0.9rem',
-    lineHeight:  '1.6',
-    maxWidth:    '440px',
-    margin:      '0 auto 28px',
-  },
-  featureList: {
-    display:       'flex',
-    flexDirection: 'column',
-    gap:           '12px',
-    textAlign:     'left',
-    maxWidth:      '360px',
-    margin:        '0 auto',
-  },
-  featureItem: {
-    display:       'flex',
-    alignItems:    'center',
-    gap:           '12px',
-    padding:       '12px 16px',
-    background:    'rgba(255,255,255,0.025)',
-    border:        '1px solid rgba(255,255,255,0.06)',
-    borderRadius:  '10px',
-  },
-  featureIcon: {
-    color:      'var(--silver-dim)',
+  avatar: {
+    width: '56px', height: '56px', borderRadius: '50%',
+    background: 'linear-gradient(135deg, #444, #888)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '20px', fontWeight: '800', color: '#fff',
     flexShrink: 0,
+    letterSpacing: '1px',
   },
-  featureLabel: {
-    flex:       1,
-    color:      'rgba(255,255,255,0.55)',
-    fontSize:   '0.9rem',
+  userInfo: { flex: 1 },
+  displayName: {
+    fontFamily: "'Outfit', 'Inter', sans-serif",
+    fontSize: '1.3rem', fontWeight: '700',
+    color: '#f0f0f0', margin: '0 0 4px',
   },
-  featureBadge: {
-    fontSize:     '10px',
-    fontWeight:   '600',
-    color:        'rgba(192,192,192,0.5)',
-    background:   'rgba(192,192,192,0.06)',
-    border:       '1px solid rgba(192,192,192,0.12)',
-    padding:      '3px 8px',
-    borderRadius: '20px',
-    letterSpacing:'0.3px',
-    textTransform:'uppercase',
+  email: { color: 'rgba(255,255,255,0.35)', fontSize: '13px', margin: '0 0 6px' },
+  adminBadge: {
+    fontSize: '10px', fontWeight: '700', letterSpacing: '1.5px',
+    background: 'rgba(251,191,36,0.12)', color: '#fbbf24',
+    border: '1px solid rgba(251,191,36,0.3)',
+    padding: '3px 10px', borderRadius: '20px',
+  },
+  logoutBtn: {
+    display: 'flex', alignItems: 'center', gap: '7px',
+    padding: '9px 18px', borderRadius: '8px',
+    background: 'transparent', border: '1px solid rgba(248,113,113,0.25)',
+    color: '#f87171', fontSize: '13px', fontWeight: '600',
+    cursor: 'pointer', letterSpacing: '0.5px',
+    transition: 'background 0.2s',
+    marginLeft: 'auto',
+  },
+  statsRow: {
+    display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap',
+  },
+  statBox: {
+    flex: 1, minWidth: '100px',
+    padding: '18px 20px',
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '12px',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+  },
+  statNum: {
+    fontSize: '2rem', fontWeight: '800',
+    color: '#e0e0e0', fontFamily: 'monospace',
+  },
+  statLabel: { fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' },
+  tabBar: {
+    display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap',
+  },
+  tabBtn: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    padding: '9px 18px', borderRadius: '8px',
+    background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+    color: 'rgba(255,255,255,0.45)', fontSize: '13px', fontWeight: '600',
+    cursor: 'pointer', letterSpacing: '0.5px', transition: 'all 0.2s',
+  },
+  tabActive: {
+    background: 'rgba(192,192,192,0.08)',
+    border: '1px solid rgba(192,192,192,0.2)',
+    color: '#e0e0e0',
+  },
+  list: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  videoRow: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '16px 20px',
+    background: 'rgba(255,255,255,0.025)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '10px', flexWrap: 'wrap', gap: '12px',
+  },
+  videoRowLeft: { display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' },
+  videoId: { fontFamily: 'monospace', fontWeight: '700', fontSize: '15px', color: '#c0c0c0' },
+  videoMeta: { fontSize: '12px', color: 'rgba(255,255,255,0.35)' },
+  badge: {
+    fontSize: '10px', fontWeight: '700', letterSpacing: '1px',
+    padding: '3px 10px', borderRadius: '20px', border: '1px solid',
+  },
+  reserverTag: { fontSize: '12px', color: '#f59e0b', fontWeight: '600' },
+  rowActions: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
+  openBtn: {
+    padding: '8px 18px',
+    background: '#fff', color: '#000',
+    borderRadius: '6px', fontWeight: '700',
+    fontSize: '11px', letterSpacing: '1.5px',
+    textDecoration: 'none', cursor: 'pointer',
+    display: 'inline-block',
+  },
+  liberarBtn: {
+    padding: '8px 16px',
+    background: 'transparent', color: '#f59e0b',
+    border: '1px solid rgba(245,158,11,0.3)',
+    borderRadius: '6px', fontWeight: '700',
+    fontSize: '11px', letterSpacing: '1px',
+    cursor: 'pointer',
+  },
+  empty: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    padding: '60px 0',
   },
 };
 
