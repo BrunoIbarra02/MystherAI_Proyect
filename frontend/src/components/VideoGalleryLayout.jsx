@@ -268,13 +268,24 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
           <div className="advanced-filters-center">
             {Object.entries(filterOptions).map(([key, opts]) => {
               const label = key === 'estado_censo' ? 'ESTADO' : key.toUpperCase();
+              const active = filters[key] && filters[key] !== '';
               return (
-                <select key={key} className="glass-select-mini" value={filters[key] || ""} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })}>
+                <select key={key} className="glass-select-mini" value={filters[key] || ""} onChange={(e) => setFilters({ ...filters, [key]: e.target.value })}
+                  style={active ? { borderColor: '#00ff87', color: '#00ff87' } : {}}>
                   <option value="">{label}</option>
                   {opts.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               );
             })}
+            {Object.values(filters).some(v => v && v !== '') && (
+              <button
+                className="glass-select-mini"
+                onClick={() => { setFilters({}); setSearch(''); }}
+                style={{ cursor: 'pointer', borderColor: '#ff4d4d', color: '#ff4d4d', background: 'transparent' }}
+              >
+                ✕ Limpiar
+              </button>
+            )}
           </div>
         </header>
 
