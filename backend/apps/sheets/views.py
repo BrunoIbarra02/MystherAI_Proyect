@@ -1328,6 +1328,7 @@ class ExtractMetadataView(APIView):
 class ReservarVideoView(APIView):
     """Reserva un video de Censo para estilización."""
     permission_classes = []
+    authentication_classes = []
 
     def post(self, request, pk):
         try:

@@ -135,8 +135,8 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
   const handleReservar = async (videoId) => {
     setReservaLoading(true); setReservaMsg('');
     try {
-      await api.post(`/sheets/videos/${videoId}/reservar/`);
       const nombre = user?.display_name || user?.first_name || '';
+      await api.post(`/sheets/videos/${videoId}/reservar/`, { usuario: nombre });
       const updated = { ...selectedVideo, estado_censo: 'Reservado', reservado_por: nombre };
       setSelectedVideo(updated);
       setVideos(vs => vs.map(v => v.id === videoId ? updated : v));
