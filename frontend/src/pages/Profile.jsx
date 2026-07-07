@@ -58,12 +58,11 @@ export default function Profile() {
   const fileRef = useRef();
 
   useEffect(() => {
-    if (!user) { navigate('/'); return; }
     api.get('/auth/profile-data/')
       .then(r => setData(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user]);
+  }, []);
 
   const handleLogout = async () => { await logout(); navigate('/'); };
 
@@ -85,7 +84,10 @@ export default function Profile() {
       const base64 = await resizeImage(file, 300);
       await api.post('/auth/avatar/', { avatar: base64 });
       setUser(prev => ({ ...prev, avatar: base64 }));
-    } catch (_) {}
+    } catch (err) {
+      alert('No se pudo guardar la foto. Intenta de nuevo.');
+      console.error('Avatar upload error:', err);
+    }
     finally { setAvatarUploading(false); }
   };
 

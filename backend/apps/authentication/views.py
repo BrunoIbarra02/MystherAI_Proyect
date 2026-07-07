@@ -82,6 +82,8 @@ class ProfileDataView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class UpdateAvatarView(APIView):
     """Save base64 avatar for the logged-in user."""
+    permission_classes = []
+    authentication_classes = []
 
     def post(self, request):
         if not request.user.is_authenticated:
