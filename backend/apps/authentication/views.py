@@ -55,13 +55,12 @@ class ProfileDataView(APIView):
         ).values('id', 'video_id', 'id_video_equipo', 'mapa', 'especie',
                  'duracion', 'drive_link', 'estado_censo', 'reservado_por')
 
-        # Videos stylized by this user (estado_censo=Estilizado, reservado_por=name)
+        # Stylized submissions by this user (registro entries with revision status)
         stylized = VideoMetadata.objects.filter(
-            tipo='censo',
-            estado_censo='Estilizado',
-            reservado_por__iexact=display,
+            tipo='registro',
+            usuario__iexact=display,
         ).values('id', 'video_id', 'id_video_equipo', 'mapa', 'especie',
-                 'duracion', 'drive_link', 'estado_censo', 'reservado_por')
+                 'drive_link', 'estilizado', 'estado_revision', 'comentario_revision')
 
         # Admin: all team reservations
         all_reservations = []

@@ -3,6 +3,7 @@ from .views import (
     VideoListView, VideoDetailView, FilterOptionsView, AutoRegisterVideoView,
     CensoSummaryView, RegistroSummaryView, SyncFromSheetsView, ExtractMetadataView,
     ReservarVideoView, LiberarVideoView, MarcarEstilizadoView,
+    AprobarVideoView, DenegarVideoView,
 )
 
 urlpatterns = [
@@ -11,6 +12,8 @@ urlpatterns = [
     path('videos/<int:pk>/reservar/', ReservarVideoView.as_view(), name='video-reservar'),
     path('videos/<int:pk>/liberar/', LiberarVideoView.as_view(), name='video-liberar'),
     path('videos/<int:pk>/estilizado/', MarcarEstilizadoView.as_view(), name='video-estilizado'),
+    path('videos/<int:pk>/aprobar/', AprobarVideoView.as_view(), name='video-aprobar'),
+    path('videos/<int:pk>/denegar/', DenegarVideoView.as_view(), name='video-denegar'),
     path('filter-options/', FilterOptionsView.as_view(), name='filter-options'),
     path('auto-register/', AutoRegisterVideoView.as_view(), name='auto-register'),
     path('summary/', CensoSummaryView.as_view(), name='censo-summary'),

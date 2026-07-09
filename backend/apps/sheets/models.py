@@ -32,5 +32,10 @@ class VideoMetadata(models.Model):
     estado_censo = models.CharField(max_length=20, choices=ESTADO_CENSO, default='Disponible', blank=True, null=True)
     reservado_por = models.CharField(max_length=100, blank=True, null=True)
 
+    # --- REVISIÓN (sólo registro) ---
+    ESTADO_REVISION = [('Pendiente', 'Pendiente'), ('Aprobado', 'Aprobado'), ('Rechazado', 'Rechazado')]
+    estado_revision    = models.CharField(max_length=20, choices=ESTADO_REVISION, default='Pendiente', blank=True, null=True)
+    comentario_revision = models.TextField(blank=True, null=True)
+
     def __str__(self):
         return f"{self.video_id} - {self.tipo}"

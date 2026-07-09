@@ -1407,3 +1407,65 @@ class MarcarEstilizadoView(APIView):
         video.estado_censo = 'Estilizado'
         video.save(update_fields=['estado_censo'])
         return Response({'ok': True, 'estado': 'Estilizado'}, status=status.HTTP_200_OK)
+
+
+# Personas que ya no están en la empresa — si se deniega su trabajo se borra y se libera el censo
+FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan'}
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AprobarVideoView(APIView):
+    """Admin aprueba un video de Registro."""
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request, pk):
+        try:
+            registro = VideoMetadata.objects.get(pk=pk, tipo='registro')
+        except VideoMetadata.DoesNotExist:
+            return Response({'error': 'Registro no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        comentario = (request.data.get('comentario') or '').strip()
+        registro.estado_revision    = 'Aprobado'
+        registro.comentario_revision = comentario or None
+        registro.aceptado = 'Si'
+        registro.save(update_fields=['estado_revision', 'comentario_revision', 'aceptado'])
+        return Response({'ok': True, 'estado_revision': 'Aprobado'}, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class DenegarVideoView(APIView):
+    """Admin deniega un video de Registro.
+    Ex-empleados: borra el registro y libera el censo para que otro lo tome.
+    Empleados actuales: marca como Rechazado y el censo queda Reservado para reintento.
+    """
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request, pk):
+        try:
+            registro = VideoMetadata.objects.get(pk=pk, tipo='registro')
+        except VideoMetadata.DoesNotExist:
+            return Response({'error': 'Registro no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        comentario = (request.data.get('comentario') or '').strip()
+        usuario    = (registro.usuario or '').strip().lower()
+        is_former  = usuario in FORMER_EMPLOYEES
+
+        if is_former:
+            # Liberar el video de censo correspondiente
+            censo_qs = VideoMetadata.objects.filter(
+                tipo='censo',
+            ).filter(
+                Q(video_id=registro.video_id) |
+                Q(id_video_equipo=registro.video_id)
+            )
+            censo_qs.update(estado_censo='Disponible', reservado_por=None)
+            registro.delete()
+            return Response({'ok': True, 'accion': 'eliminado', 'censo_liberado': censo_qs.count()}, status=status.HTTP_200_OK)
+        else:
+            registro.estado_revision    = 'Rechazado'
+            registro.comentario_revision = comentario or None
+            registro.aceptado = 'No'
+            registro.save(update_fields=['estado_revision', 'comentario_revision', 'aceptado'])
+            return Response({'ok': True, 'estado_revision': 'Rechazado'}, status=status.HTTP_200_OK)

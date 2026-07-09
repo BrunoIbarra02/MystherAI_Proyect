@@ -24,7 +24,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
   // Reservation state
   const [reservaLoading, setReservaLoading] = useState(false);
-  const [reservaMsg, setReservaMsg] = useState('');
+  const [reservaMsg, setReservaMsg]         = useState('');
+  const [revComment, setRevComment]         = useState('');
+  const [revLoading, setRevLoading]         = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [zoomInputVal, setZoomInputVal] = useState(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
@@ -144,6 +146,37 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
     } catch (err) {
       setReservaMsg(err.response?.data?.error || 'Error al reservar.');
     } finally { setReservaLoading(false); }
+  };
+
+  const handleAprobar = async (videoId) => {
+    setRevLoading(true);
+    try {
+      await api.post(`/sheets/videos/${videoId}/aprobar/`, { comentario: revComment });
+      const updated = { ...selectedVideo, estado_revision: 'Aprobado', comentario_revision: revComment || null };
+      setSelectedVideo(updated);
+      setVideos(vs => vs.map(v => v.id === videoId ? updated : v));
+      setRevComment('');
+    } catch (err) { alert(err.response?.data?.error || 'Error al aprobar.'); }
+    finally { setRevLoading(false); }
+  };
+
+  const handleDenegar = async (videoId) => {
+    if (!revComment.trim()) { alert('Escribe un comentario de retroalimentación antes de denegar.'); return; }
+    setRevLoading(true);
+    try {
+      const res = await api.post(`/sheets/videos/${videoId}/denegar/`, { comentario: revComment });
+      if (res.data?.accion === 'eliminado') {
+        setSelectedVideo(null);
+        setRevComment('');
+        fetchVideos();
+      } else {
+        const updated = { ...selectedVideo, estado_revision: 'Rechazado', comentario_revision: revComment };
+        setSelectedVideo(updated);
+        setVideos(vs => vs.map(v => v.id === videoId ? updated : v));
+        setRevComment('');
+      }
+    } catch (err) { alert(err.response?.data?.error || 'Error al denegar.'); }
+    finally { setRevLoading(false); }
   };
 
   const handleLiberar = async (videoId) => {
@@ -515,6 +548,51 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                             )}
                           </div>
                         )}
+
+                        {/* ── PANEL DE REVISIÓN (solo para admin) ── */}
+                        {(() => {
+                          const rev = selectedVideo.estado_revision || 'Pendiente';
+                          const revColor = { Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[rev] || '#888';
+                          return (
+                            <div style={{ gridColumn: '1/-1', marginTop: '20px', padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${revColor}22`, borderRadius: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                                <span style={{ fontSize: '9px', letterSpacing: '2px', color: '#444', textTransform: 'uppercase', fontWeight: 700 }}>ESTADO DE REVISIÓN</span>
+                                <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', background: `${revColor}22`, color: revColor, border: `1px solid ${revColor}44` }}>
+                                  {rev.toUpperCase()}
+                                </span>
+                              </div>
+                              {selectedVideo.comentario_revision && (
+                                <p style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', margin: '0 0 14px' }}>
+                                  "{selectedVideo.comentario_revision}"
+                                </p>
+                              )}
+                              {user?.is_staff && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  <textarea
+                                    value={revComment}
+                                    onChange={e => setRevComment(e.target.value)}
+                                    placeholder="Comentario de retroalimentación (obligatorio para denegar)..."
+                                    style={{ width: '100%', background: '#111', border: '1px solid #222', color: '#ccc', borderRadius: '6px', padding: '10px', fontSize: '12px', resize: 'vertical', minHeight: '70px', boxSizing: 'border-box' }}
+                                  />
+                                  <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                      disabled={revLoading}
+                                      onClick={() => handleAprobar(selectedVideo.id)}
+                                      style={{ padding: '8px 20px', background: '#22c55e', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '11px', letterSpacing: '1.5px', cursor: 'pointer', opacity: revLoading ? 0.6 : 1 }}>
+                                      {revLoading ? '...' : '✓ APROBAR'}
+                                    </button>
+                                    <button
+                                      disabled={revLoading}
+                                      onClick={() => handleDenegar(selectedVideo.id)}
+                                      style={{ padding: '8px 20px', background: 'transparent', color: '#ef4444', border: '1px solid #ef444455', borderRadius: '6px', fontWeight: 700, fontSize: '11px', letterSpacing: '1.5px', cursor: 'pointer', opacity: revLoading ? 0.6 : 1 }}>
+                                      {revLoading ? '...' : '✕ DENEGAR'}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </>
                     ) : (
                       <>
@@ -548,7 +626,7 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
                               {/* Actions */}
                               {est === 'Disponible' && (
-                                user ? (
+                                user && !user.is_staff ? (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '11px', color: '#555' }}>
                                       Reservar como: <strong style={{ color: '#bbb' }}>{user.display_name}</strong>
@@ -560,6 +638,8 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                                       {reservaLoading ? '...' : 'RESERVAR PARA ESTILIZAR'}
                                     </button>
                                   </div>
+                                ) : user?.is_staff ? (
+                                  <p style={{ fontSize: '11px', color: '#444', margin: 0 }}>Disponible para que el equipo lo reserve.</p>
                                 ) : (
                                   <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>Inicia sesión para reservar este video.</p>
                                 )

@@ -1,8 +1,7 @@
-
-# ════════════════════════════════════════════════════════════════════════════
-# MYSTHERIAI STUDIO — AI Video Production Console
-# Pipeline: 01 CARGAR → 02 IMAGEN (I2I + I2V) → 03 V2V → 04 EDITAR
-# ════════════════════════════════════════════════════════════════════════════
+"""
+MYSTHERIAI STUDIO
+Pipeline: 01 CARGAR → [02 EDITAR] → 03 IMAGEN → 04 V2V → GUARDAR
+"""
 import os, re, datetime, subprocess, base64, shutil
 import requests as req
 import cv2
@@ -12,286 +11,217 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Logo — encode once at startup
-_LOGO_B64  = ""
-_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.jpeg")
-if os.path.exists(_logo_path):
-    with open(_logo_path, "rb") as _f:
-        _LOGO_B64 = base64.b64encode(_f.read()).decode()
-_LOGO_IMG = (
-    f'<img src="data:image/jpeg;base64,{_LOGO_B64}" '
-    'style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" />'
-) if _LOGO_B64 else ''
-
 DEFAULT_KEY = os.environ.get("WAVESPEED_API_KEY", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 FFMPEG      = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 
-OUTPUTS = {k: os.path.join(BASE_DIR, "outputs", v) for k, v in {
-    "cap":   "01_CAPTURAS",
-    "est":   "02_ESTILIZADOS",
-    "vid":   "03_VIDEOS_FINALES",
-    "trans": "04_TRANSFORMACIONES",
-}.items()}
-TEMP_DIR = os.path.join(BASE_DIR, "outputs", "temp_local_bridge")
-for _d in [*OUTPUTS.values(), TEMP_DIR]:
-    os.makedirs(_d, exist_ok=True)
+OUT_CAP = os.path.join(BASE_DIR, "outputs", "capturas")
+OUT_VID = os.path.join(BASE_DIR, "outputs", "videos")
+TEMP    = os.path.join(BASE_DIR, "outputs", "temp")
+for d in [OUT_CAP, OUT_VID, TEMP]:
+    os.makedirs(d, exist_ok=True)
+
+# ── Logo ──────────────────────────────────────────────────────────────────────
+_logo_b64 = ""
+_logo_path = os.path.join(BASE_DIR, "logo.jpeg")
+if os.path.exists(_logo_path):
+    with open(_logo_path, "rb") as _f:
+        _logo_b64 = base64.b64encode(_f.read()).decode()
+LOGO_HTML = (
+    f'<img src="data:image/jpeg;base64,{_logo_b64}" '
+    'style="width:36px;height:36px;border-radius:8px;object-fit:cover;" />'
+) if _logo_b64 else ""
 
 # ── Catálogos ─────────────────────────────────────────────────────────────────
 ESTILOS = {
-    "Anime":      "anime style, cel-shaded illustration, vibrant colors, Studio Ghibli quality, detailed backgrounds",
-    "Cartoon":    "cartoon style, bold outlines, flat vivid colors, expressive exaggerated character features",
-    "Lego":       "LEGO brick construction style, plastic toy aesthetic, bright primary colors, blocky geometry",
-    "Ciberpunk":  "cyberpunk aesthetic, neon lights in cyan and magenta, dark rainy atmosphere, holographic displays",
-    "Realista":   "photorealistic, cinematic 4K quality, natural soft lighting, sharp fine detail, professional grade",
-    "Acuarela":   "watercolor painting style, soft blended wet edges, pastel tones, artistic paper texture",
-    "Óleo":       "oil painting on canvas, rich impasto texture, impressionist brushwork, deep saturated colors",
-    "Pixel Art":  "retro pixel art, 8-bit style, flat limited palette, crisp pixelated edges",
+    "Anime":     "anime style, cel-shaded illustration, vibrant colors, Studio Ghibli quality",
+    "Cartoon":   "cartoon style, bold outlines, flat vivid colors, expressive exaggerated features",
+    "Lego":      "LEGO brick construction style, plastic toy aesthetic, bright primary colors",
+    "Ciberpunk": "cyberpunk aesthetic, neon lights in cyan and magenta, dark rainy atmosphere",
+    "Realista":  "photorealistic, cinematic 4K quality, natural soft lighting, sharp fine detail",
+    "Acuarela":  "watercolor painting style, soft blended wet edges, pastel tones, paper texture",
+    "Óleo":      "oil painting on canvas, rich impasto texture, impressionist brushwork",
+    "Pixel Art": "retro pixel art, 8-bit style, flat limited palette, crisp pixelated edges",
+}
+
+I2I_MODELS = {
+    "Z-Image Nano  — Rápido":       "wavespeed-ai/z-image/nano",
+    "Z-Image Pro   — Alta calidad": "wavespeed-ai/z-image/pro",
+    "Hunyuan Image 3 — Hunyuan":    "tencent/hunyuan-image-3",
 }
 
 V2V_MODELS = {
-    "WAN 2.7 Video Edit — Edición guiada por prompt · 720p/1080p":        "alibaba/wan-2.7/video-edit",
-    "LTX 2-19B Control — Pose/Depth/Canny + Audio · hasta 20s":           "wavespeed-ai/ltx-2-19b/control",
-    "Seedance 2.0 Edit — Edición cinematográfica · 4K + Audio generativo": "bytedance/seedance-2.0/video-edit",
+    "Kling V2.6 Std — Motion Transfer": "kwaivgi/kling-v2.6-std/motion-control",
+    "Kling V2.6 Pro — Alta Fidelidad":  "kwaivgi/kling-v2.6-pro/motion-control",
+    "WAN 2.7 — Estilo Total":           "alibaba/wan-2.7/video-edit",
 }
 
-KLING_MODELS = {
-    "Kling V2.6 Std — Motion Transfer":  "kwaivgi/kling-v2.6-std/motion-control",
-    "Kling V2.6 Pro — Alta Fidelidad":   "kwaivgi/kling-v2.6-pro/motion-control",
-}
+MIEMBROS = ["Katty", "Fabio", "Wilson", "Olenka", "Rodrigo", "Bruno"]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _drive_id(url):
-    if not url: return None
-    m = re.search(r'(?:file/d/|id=|/d/)([-\w]{25,})', str(url))
+    m = re.search(r'(?:file/d/|id=|/d/)([-\w]{25,})', str(url or ''))
     return m.group(1) if m else None
 
 def _drive_dl(url):
     fid = _drive_id(url)
     return f"https://drive.google.com/uc?export=download&id={fid}" if fid else url
 
-def drive_embed(url, h=280):
-    fid = _drive_id(url)
-    if not fid: return ""
-    return (
-        f'<div style="border-radius:8px;overflow:hidden;border:1px solid #222;background:#000;">'
-        f'<iframe src="https://drive.google.com/file/d/{fid}/preview" '
-        f'width="100%" height="{h}px" frameborder="0" allow="autoplay;fullscreen" '
-        f'style="display:block;"></iframe></div>'
-    )
-
-def dl_temp(src, ext="mp4"):
-    if not str(src).startswith("http"): return src
-    url = _drive_dl(src)
-    m = re.search(r'\.(\w+)$', url.split('?')[0])
-    if m: ext = m.group(1)
-    tmp = os.path.join(TEMP_DIR, f"dl_{datetime.datetime.now().strftime('%H%M%S_%f')}.{ext}")
-    r = req.get(url, stream=True, timeout=90); r.raise_for_status()
+def dl_temp(url):
+    if not str(url).startswith("http"):
+        return str(url)
+    real = _drive_dl(url)
+    ext  = re.search(r'\.(\w+)$', real.split('?')[0])
+    ext  = ext.group(1) if ext else 'mp4'
+    tmp  = os.path.join(TEMP, f"dl_{datetime.datetime.now().strftime('%H%M%S_%f')}.{ext}")
+    r    = req.get(real, stream=True, timeout=90); r.raise_for_status()
     with open(tmp, 'wb') as f:
         for chunk in r.iter_content(8192): f.write(chunk)
     return tmp
 
-def get_src(local, url):
-    if local and os.path.exists(str(local)): return str(local)
-    if url and url.strip(): return url.strip()
-    raise gr.Error("Sube un archivo o pega una URL primero.")
-
-def ws_up(cl, src):
-    if str(src).startswith("http"): return _drive_dl(src)
-    return cl.upload(src)
-
-def _ws_out(res):
+def ws_out(res):
     for attr in ("outputs", "output", "data"):
         val = res.get(attr) if hasattr(res, "get") else getattr(res, attr, None)
         if val is None: continue
         if isinstance(val, dict):
             val = val.get("outputs") or val.get("output") or val
         return val[0] if isinstance(val, list) and val else val
-    if isinstance(res, list) and res: return res[0]
     return str(res) if res else None
 
-# ── Funciones principales ─────────────────────────────────────────────────────
 def on_load(request: gr.Request):
     api_key   = request.query_params.get("api_key", DEFAULT_KEY)
     video_url = request.query_params.get("video_url", "")
     return api_key, video_url
 
+# ── 01: CARGAR ────────────────────────────────────────────────────────────────
 def do_analyze(local, url):
     try:
-        src  = get_src(local, url)
-        path = dl_temp(src)
-        cap  = cv2.VideoCapture(path)
+        src = str(local) if local and os.path.exists(str(local)) else url.strip()
+        if not src: raise gr.Error("Sube un video o pega una URL.")
+        path  = dl_temp(src)
+        cap   = cv2.VideoCapture(path)
         fps   = cap.get(cv2.CAP_PROP_FPS) or 30
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        dur   = total / fps
-        cap.release()
-        return gr.update(maximum=max(0, total - 1), value=0), f"{total} frames · {dur:.1f}s · {fps:.0f} fps"
+        dur   = total / fps; cap.release()
+        return (
+            gr.update(maximum=max(0, total - 1), value=0),
+            f"✓ {total} frames · {dur:.1f}s · {fps:.0f} fps",
+            src,
+        )
     except gr.Error: raise
     except Exception as e: raise gr.Error(f"Error al analizar: {e}")
 
-def do_snap(local, url, frame_idx, save_file, name):
+def do_snap(vid_state, frame_idx):
+    if not vid_state: raise gr.Error("Analiza el video primero.")
     try:
-        src  = get_src(local, url)
-        path = dl_temp(src)
+        path = dl_temp(vid_state)
         cap  = cv2.VideoCapture(path)
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(frame_idx))
         ret, frame = cap.read(); cap.release()
         if not ret: raise gr.Error("No se pudo leer ese frame.")
+        fname = f"frame_{datetime.datetime.now().strftime('%H%M%S')}.jpg"
+        saved = os.path.join(OUT_CAP, fname)
+        cv2.imwrite(saved, frame)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        if not save_file: return rgb, "", ""
-        fname = f"{name or 'frame'}_{datetime.datetime.now().strftime('%H%M%S')}.jpg"
-        out   = os.path.join(OUTPUTS["cap"], fname)
-        cv2.imwrite(out, frame)
-        return rgb, out, out   # third value auto-fills I2I image path
+        return rgb, saved
     except gr.Error: raise
     except Exception as e: raise gr.Error(f"Error al capturar: {e}")
 
-def fill_style_prompt(estilo): return ESTILOS.get(estilo, "")
-
-def do_stylize(img_local, img_url, style, prompt, imagination, key):
-    if not key: raise gr.Error("API Key no configurada.")
+# ── 02: EDITAR ────────────────────────────────────────────────────────────────
+def do_cut(vid_state, start, end):
+    if not vid_state: raise gr.Error("Carga y analiza el video en el paso 01 primero.")
     try:
-        cl  = wavespeed.Client(api_key=key)
-        txt = prompt or ESTILOS.get(style, "")
-        if not txt: raise gr.Error("Selecciona un estilo o escribe un prompt.")
-        g  = 1.5 + (imagination / 10.0) * 10.5
-        fs = 0.20 + (imagination / 10.0) * 0.60
-        # Resolve image source
-        if img_local and os.path.exists(str(img_local)):
-            img_url_up = cl.upload(str(img_local))
-        elif img_url and img_url.strip():
-            img_url_up = _drive_dl(img_url.strip())
-        else:
-            raise gr.Error("Sube una imagen o pega una URL primero.")
-        res = cl.run(
-            "wavespeed-ai/z-image/turbo",
-            {"image": img_url_up, "prompt": txt, "strength": fs, "guidance_scale": g},
+        src = dl_temp(vid_state)
+        out = os.path.join(OUT_VID, f"corte_{datetime.datetime.now().strftime('%H%M%S')}.mp4")
+        subprocess.run(
+            [FFMPEG, "-y", "-ss", str(start), "-to", str(end),
+             "-i", src, "-c:v", "libx264", "-c:a", "aac", out],
+            check=True, capture_output=True
         )
-        url = _ws_out(res)
-        if not url: raise gr.Error("WaveSpeed no devolvió resultado.")
-        return url, url, url   # result_img, result_url, auto-fill I2V image url
-    except gr.Error: raise
-    except Exception as e: raise gr.Error(f"Error WaveSpeed I2I: {e}")
-
-def do_motion(img_local, img_url, vid_url, model_label, prompt, orientation, keep_audio, key):
-    if not key: raise gr.Error("API Key no configurada.")
-    model = KLING_MODELS.get(model_label)
-    if not model: raise gr.Error("Selecciona un modelo Kling válido.")
-    try:
-        cl = wavespeed.Client(api_key=key)
-        if img_local and os.path.exists(str(img_local)):
-            img_up = cl.upload(str(img_local))
-        elif img_url and img_url.strip():
-            img_up = img_url.strip()
-        else:
-            raise gr.Error("Sube una imagen o pega una URL primero.")
-        if not vid_url or not vid_url.strip(): raise gr.Error("Pega la URL del video de movimiento.")
-        real   = dl_temp(vid_url.strip()) if vid_url.strip().startswith("http") else vid_url.strip()
-        vid_up = cl.upload(real)
-        res    = cl.run(model, {
-            "image": img_up, "video": vid_up,
-            "prompt": prompt or "",
-            "character_orientation": orientation,
-            "keep_original_sound":   keep_audio,
-        })
-        result = _ws_out(res)
-        if not result: raise gr.Error("Kling no devolvió resultado.")
-        return result, result
-    except gr.Error: raise
-    except Exception as e: raise gr.Error(f"Error WaveSpeed I2V: {e}")
-
-def do_v2v(local, url, model_label, prompt, neg, strength, guidance, steps,
-           resolution, duration, ltx_mode, ltx_audio, key):
-    if not key: raise gr.Error("API Key no configurada.")
-    model = V2V_MODELS.get(model_label)
-    if not model: raise gr.Error("Selecciona un modelo V2V válido.")
-    try:
-        cl  = wavespeed.Client(api_key=key)
-        src = get_src(local, url)
-        vid = _drive_dl(src) if str(src).startswith("http") else cl.upload(src)
-        params = {"video": vid, "prompt": prompt or ""}
-        if model == "alibaba/wan-2.7/video-edit":
-            params.update({"negative_prompt": neg or "", "resolution": resolution if resolution in ("720p","1080p") else "720p",
-                           "duration": int(duration) if int(duration) > 0 else 0, "audio_setting": "auto",
-                           "enable_prompt_expansion": False, "seed": -1})
-        elif model == "wavespeed-ai/ltx-2-19b/control":
-            params.update({"mode": ltx_mode, "audio_mode": ltx_audio,
-                           "resolution": resolution if resolution in ("480p","720p","1080p") else "720p", "seed": -1})
-        elif model == "bytedance/seedance-2.0/video-edit":
-            params.update({"resolution": resolution, "duration": int(duration) if int(duration) > 0 else 5,
-                           "generate_audio": True, "enable_web_search": False})
-        res    = cl.run(model, params)
-        result = _ws_out(res)
-        if not result: raise gr.Error("WaveSpeed no devolvió resultado.")
-        return result, result
-    except gr.Error: raise
-    except Exception as e: raise gr.Error(f"Error WaveSpeed V2V: {e}")
-
-def do_cut(local, url, start, end, name):
-    try:
-        src  = get_src(local, url)
-        path = dl_temp(src)
-        out  = os.path.join(OUTPUTS["vid"], f"{name or 'corte'}_{datetime.datetime.now().strftime('%H%M%S')}.mp4")
-        subprocess.run([FFMPEG, "-y", "-ss", str(start), "-to", str(end), "-i", path,
-                        "-c:v", "libx264", "-c:a", "aac", out],
-                       check=True, capture_output=True, text=True)
-        return out
+        return out, out
     except subprocess.CalledProcessError as e:
-        raise gr.Error(f"ffmpeg error: {e.stderr[-400:] if e.stderr else 'sin detalle'}")
+        raise gr.Error(f"ffmpeg: {e.stderr.decode()[-300:] if e.stderr else 'sin detalle'}")
     except gr.Error: raise
     except Exception as e: raise gr.Error(f"Error al cortar: {e}")
 
-def do_split(local, url, n_parts, prefixes):
+# ── 03: IMAGEN ────────────────────────────────────────────────────────────────
+def do_stylize(frame_state, estilo, prompt_custom, model_label, key):
+    if not key: raise gr.Error("Configura tu API Key.")
+    if not frame_state: raise gr.Error("Captura un fotograma en el paso 01 primero.")
+    prompt = prompt_custom.strip() or ESTILOS.get(estilo, "")
+    if not prompt: raise gr.Error("Selecciona un estilo o escribe un prompt.")
+    model  = I2I_MODELS.get(model_label)
+    if not model: raise gr.Error("Selecciona un modelo I2I.")
     try:
-        src  = get_src(local, url)
-        path = dl_temp(src)
-        cap  = cv2.VideoCapture(path)
-        fps  = cap.get(cv2.CAP_PROP_FPS) or 30
-        dur  = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) / fps; cap.release()
-        n    = int(n_parts); seg = dur / n
-        prefs = [p.strip() for p in prefixes.split(",")] if prefixes else []
-        paths = []
-        for i in range(n):
-            nm  = prefs[i] if i < len(prefs) else f"parte_{i+1}"
-            out = os.path.join(OUTPUTS["vid"], f"{nm}_{datetime.datetime.now().strftime('%H%M%S_%f')}.mp4")
-            subprocess.run([FFMPEG, "-y", "-ss", str(i*seg), "-to", str((i+1)*seg),
-                            "-i", path, "-c:v", "libx264", "-c:a", "aac", out],
-                           check=True, capture_output=True, text=True)
-            paths.append(out)
-        return "\n".join(paths)
-    except subprocess.CalledProcessError as e:
-        raise gr.Error(f"ffmpeg error: {e.stderr[-400:] if e.stderr else 'sin detalle'}")
+        cl    = wavespeed.Client(api_key=key)
+        img_u = cl.upload(str(frame_state))
+        res   = cl.run(model, {"image": img_u, "prompt": prompt})
+        url   = ws_out(res)
+        if not url: raise gr.Error("El modelo no devolvió resultado.")
+        return url, url, prompt
     except gr.Error: raise
-    except Exception as e: raise gr.Error(f"Error al partir: {e}")
+    except Exception as e: raise gr.Error(f"Error I2I ({model_label}): {e}")
 
-def do_merge(files, name):
+# ── 04: V2V ───────────────────────────────────────────────────────────────────
+def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key):
+    if not key: raise gr.Error("Configura tu API Key.")
+    if not img_url_state: raise gr.Error("Genera la imagen estilizada en el paso 03 primero.")
+    if not vid_state:     raise gr.Error("Carga el video en el paso 01 primero.")
+    model = V2V_MODELS.get(model_label)
+    if not model: raise gr.Error("Selecciona un modelo V2V.")
     try:
-        tmp = os.path.join(TEMP_DIR, "concat.txt")
-        with open(tmp, "w") as f:
-            for fi in (files or []):
-                p = fi.name if hasattr(fi, "name") else str(fi)
-                f.write(f"file '{p}'\n")
-        out = os.path.join(OUTPUTS["vid"], f"{name or 'merged'}_{datetime.datetime.now().strftime('%H%M%S')}.mp4")
-        subprocess.run([FFMPEG, "-y", "-f", "concat", "-safe", "0", "-i", tmp, "-c", "copy", out],
-                       check=True, capture_output=True, text=True)
-        return out
-    except subprocess.CalledProcessError as e:
-        raise gr.Error(f"ffmpeg error: {e.stderr[-400:] if e.stderr else 'sin detalle'}")
-    except gr.Error: raise
-    except Exception as e: raise gr.Error(f"Error al unir: {e}")
+        cl        = wavespeed.Client(api_key=key)
+        vid_local = dl_temp(vid_state)
+        vid_up    = cl.upload(vid_local)
 
-def send_registro(v_id, usuario, mm, estilo, p_img, l_img, p_vid, l_vid, l_orig):
-    if not v_id or not l_vid:
-        return "⚠  ID y URL del video generado son obligatorios."
+        if "kling" in model:
+            params = {
+                "image":                img_url_state,
+                "video":                vid_up,
+                "prompt":               prompt_vid or "",
+                "character_orientation": "0",
+                "keep_original_sound":  True,
+            }
+        else:
+            params = {
+                "video":                   vid_up,
+                "prompt":                  prompt_vid or "",
+                "negative_prompt":         "",
+                "resolution":              "720p",
+                "duration":                0,
+                "audio_setting":           "auto",
+                "enable_prompt_expansion": False,
+                "seed":                    -1,
+            }
+
+        res    = cl.run(model, params)
+        result = ws_out(res)
+        if not result: raise gr.Error("El modelo no devolvió resultado.")
+        return result, result
+    except gr.Error: raise
+    except Exception as e: raise gr.Error(f"Error V2V ({model_label}): {e}")
+
+# ── GUARDAR ───────────────────────────────────────────────────────────────────
+def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url, orig_url):
+    if not video_id or not vid_url:
+        return "⚠ Completa el ID de video y genera el video en el paso 04."
     try:
         r = req.post(f"{BACKEND_URL}/api/sheets/videos/", json={
-            "video_id": str(v_id), "usuario": usuario, "mateo_miguel": mm,
-            "estilizado": estilo, "prompt_imagen": p_img, "imagen_link": l_img,
-            "prompt_video": p_vid, "drive_link": l_vid, "video_original_link": l_orig,
-            "tipo": "registro",
-        }, timeout=10)
-        return "✓ GUARDADO EN REGISTRO" if r.status_code == 201 else f"Error {r.status_code}: {r.text}"
+            "video_id":            str(video_id).strip(),
+            "tipo":                "registro",
+            "usuario":             miembro,
+            "estilizado":          estilo,
+            "prompt_imagen":       prompt_img,
+            "imagen_link":         img_url,
+            "prompt_video":        prompt_vid,
+            "drive_link":          vid_url,
+            "video_original_link": orig_url,
+            "estado_revision":     "Pendiente",
+        }, timeout=15)
+        if r.status_code == 201:
+            return "✓ GUARDADO EN REGISTRO — Pendiente de revisión"
+        return f"Error {r.status_code}: {r.text[:200]}"
     except Exception as e:
         return f"Error de conexión: {e}"
 
@@ -299,7 +229,7 @@ def send_registro(v_id, usuario, mm, estilo, p_img, l_img, p_vid, l_vid, l_orig)
 CSS = """
 footer { display:none !important; }
 body, html { background:#0a0a0a !important; margin:0 !important; padding:0 !important; }
-.gradio-container, .gradio-container > div, .main {
+.gradio-container, .main {
     background:#0a0a0a !important; max-width:100% !important; width:100% !important;
     margin:0 !important; padding-left:40px !important; padding-right:40px !important;
     box-sizing:border-box !important;
@@ -307,347 +237,230 @@ body, html { background:#0a0a0a !important; margin:0 !important; padding:0 !impo
 .tab-nav { background:#0a0a0a !important; border-bottom:1px solid #1c1c1c !important; }
 .tab-nav button {
     color:#3a3a3a !important; font-size:11px !important; letter-spacing:2px !important;
-    text-transform:uppercase !important; padding:12px 18px !important;
+    text-transform:uppercase !important; padding:12px 20px !important;
     border-radius:0 !important; border-bottom:2px solid transparent !important;
     background:transparent !important; font-weight:600 !important;
 }
 .tab-nav button.selected { color:#ffffff !important; border-bottom:2px solid #ffffff !important; }
 .tab-nav button:hover   { color:#888 !important; }
-.block, .gr-group, .gr-form {
-    background:#111 !important; border:1px solid #1c1c1c !important; border-radius:8px !important;
+.block, .gr-group { background:#111 !important; border:1px solid #1c1c1c !important; border-radius:8px !important; }
+label > span {
+    color:#666 !important; font-size:11px !important; text-transform:uppercase !important;
+    letter-spacing:1.5px !important; font-weight:600 !important;
 }
-label > span, .label-wrap > span {
-    color:#666 !important; font-size:12px !important;
-    text-transform:uppercase !important; letter-spacing:1.5px !important; font-weight:600 !important;
-}
-input, textarea, .gr-input {
+input, textarea {
     background:#161616 !important; border:1px solid #222 !important;
     color:#d4d4d4 !important; border-radius:6px !important; font-size:14px !important;
 }
-input:focus, textarea:focus { border-color:#555 !important; box-shadow:0 0 0 2px rgba(255,255,255,0.05) !important; }
+input:focus, textarea:focus { border-color:#555 !important; }
 input::placeholder, textarea::placeholder { color:#333 !important; }
-select, .gr-dropdown { background:#161616 !important; border:1px solid #222 !important; color:#d4d4d4 !important; }
+select { background:#161616 !important; border:1px solid #222 !important; color:#d4d4d4 !important; }
 button.primary {
     background:#ffffff !important; color:#000 !important; font-weight:700 !important;
-    border:none !important; border-radius:6px !important;
-    font-size:12px !important; letter-spacing:1.5px !important; text-transform:uppercase !important;
+    border:none !important; border-radius:6px !important; font-size:12px !important;
+    letter-spacing:1.5px !important; text-transform:uppercase !important;
 }
 button.primary:hover { background:#d4d4d4 !important; }
 button.secondary {
-    background:#161616 !important; color:#555 !important;
-    border:1px solid #222 !important; border-radius:6px !important;
-    font-size:12px !important; letter-spacing:1px !important;
+    background:#161616 !important; color:#555 !important; border:1px solid #222 !important;
+    border-radius:6px !important; font-size:12px !important; letter-spacing:1px !important;
 }
 button.secondary:hover { border-color:#888 !important; color:#aaa !important; }
-input[type=range] { accent-color:#ffffff !important; }
-input[type=radio], input[type=checkbox] { accent-color:#ffffff !important; }
-.gr-accordion { background:#0d0d0d !important; border:1px solid #1c1c1c !important; border-radius:8px !important; }
-.upload-container { border:1px dashed #222 !important; background:#111 !important; border-radius:8px !important; }
-.upload-container:hover { border-color:#555 !important; }
-.result-url textarea {
-    background:#0c0c0c !important; border:1px solid #222 !important;
-    color:#888 !important; font-family:monospace !important; font-size:12px !important;
-}
 video, img { border-radius:8px !important; }
-hr { border:none; border-top:1px solid #1c1c1c; margin:18px 0; }
-.pipeline-arrow {
-    display:flex; align-items:center; justify-content:center;
-    color:#333; font-size:11px; letter-spacing:2px; padding:8px 0;
+.pipe-label {
+    font-size:10px; color:#333; letter-spacing:2px; text-transform:uppercase;
+    text-align:center; padding:6px 0;
 }
+.step-divider { border:none; border-top:1px solid #1a1a1a; margin:16px 0; }
 """
 
 # ── UI ────────────────────────────────────────────────────────────────────────
-with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base(), fill_height=True) as demo:
-    api_key_st  = gr.State(DEFAULT_KEY)
-    preload_url = gr.State("")
-    # Pipeline state — passes captured frame path into I2I, styled URL into I2V
-    s_frame_path = gr.State("")
-    s_styled_url = gr.State("")
+with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base()) as demo:
 
-    demo.load(on_load, None, [api_key_st, preload_url])
+    # Pipeline State
+    api_key_st = gr.State(DEFAULT_KEY)
+    s_vid      = gr.State("")   # source video (url or local path); updated on cut
+    s_frame    = gr.State("")   # captured frame local path
+    s_img_url  = gr.State("")   # styled image url (result of I2I)
+    s_vid_out  = gr.State("")   # v2v result video url
+    s_prompt_i = gr.State("")   # prompt used in I2I step
+
+    demo.load(on_load, None, [api_key_st, s_vid])
 
     gr.HTML(f"""
-    <div style="display:flex;align-items:center;gap:14px;padding:16px 0 14px;border-bottom:1px solid #1c1c1c;margin-bottom:4px;">
-      {_LOGO_IMG}
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 0 12px;
+                border-bottom:1px solid #1c1c1c;margin-bottom:4px;">
+      {LOGO_HTML}
       <div>
-        <div style="font-size:16px;font-weight:800;letter-spacing:2px;color:#fff;line-height:1.1;">MYSTHERIAI</div>
-        <div style="font-size:10px;color:#444;letter-spacing:3px;text-transform:uppercase;margin-top:3px;">AI Video Production Studio — WaveSpeed</div>
+        <div style="font-size:15px;font-weight:800;letter-spacing:2px;color:#fff;">
+          MYSTHERIAI STUDIO
+        </div>
+        <div style="font-size:10px;color:#333;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">
+          01 CARGAR · 02 EDITAR · 03 IMAGEN · 04 V2V
+        </div>
       </div>
     </div>
     """)
 
-    with gr.Tabs():
+    with gr.Tabs() as tabs:
 
-        # ── 01  CARGAR + CAPTURA ──────────────────────────────────────────────
-        with gr.Tab("01  CARGAR"):
-            gr.HTML('<div class="pipeline-arrow">CARGA UN VIDEO Y CAPTURA EL FOTOGRAMA DE REFERENCIA → PASA AUTOMÁTICAMENTE A 02 IMAGEN</div>')
-            src_radio = gr.Radio(
-                ["Archivo Local", "URL de Drive / Web"],
-                value="URL de Drive / Web", label="Fuente del Video",
-            )
-            local_vid = gr.Video(label="Subir Video", sources=["upload"], visible=False, height=220)
-            url_vid   = gr.Textbox(label="URL del Video (Google Drive o HTTP)", visible=True, lines=1)
+        # ══════════════════════════════════════════════════════════════════════
+        # 01  CARGAR
+        # ══════════════════════════════════════════════════════════════════════
+        with gr.Tab("01  CARGAR", id=0):
+            gr.HTML('<div class="pipe-label">Carga el video y captura el fotograma inicial</div>')
+
+            with gr.Row():
+                local_vid = gr.Video(label="Subir Video", sources=["upload"], scale=2, height=240)
+                url_vid   = gr.Textbox(
+                    label="URL del Video (Google Drive / HTTP)", scale=2, lines=2,
+                    placeholder="https://drive.google.com/..."
+                )
 
             btn_analyze = gr.Button("ANALIZAR VIDEO", variant="primary")
-            info_out    = gr.Textbox(label="Información del Video", interactive=False, lines=1)
+            vid_info    = gr.Textbox(label="Info", interactive=False, lines=1)
+            frame_sl    = gr.Slider(0, 999, value=0, step=1, label="Fotograma")
+            btn_snap    = gr.Button("CAPTURAR FOTOGRAMA", variant="primary")
+            frame_prev  = gr.Image(label="Fotograma Capturado", height=260)
 
+            gr.HTML('<hr class="step-divider">')
             with gr.Row():
-                frame_sl   = gr.Slider(0, 999, value=0, step=1, label="Fotograma", scale=3)
-                frame_name = gr.Textbox(label="Nombre de la Captura", scale=2)
+                btn_to_editar = gr.Button("✂  EDITAR PRIMERO  →", variant="secondary", scale=1)
+                btn_to_imagen = gr.Button("→  CONTINUAR A IMAGEN  (saltar edición)", variant="primary", scale=2)
 
-            with gr.Row():
-                btn_prev = gr.Button("VER FOTOGRAMA", variant="secondary", scale=1)
-                btn_snap = gr.Button("CAPTURAR Y ENVIAR A IMAGEN →", variant="primary", scale=2)
+            # Pre-fill URL from query param
+            demo.load(lambda u: gr.update(value=u) if u else gr.update(), s_vid, url_vid)
 
-            with gr.Row():
-                frame_out  = gr.Image(label="Fotograma Capturado", height=300, scale=2)
-                frame_path = gr.Textbox(label="Ruta guardada → enviada a tab 02", interactive=False, lines=3, scale=1)
-
-            demo.load(lambda u: gr.update(value=u) if u else gr.update(), preload_url, url_vid)
-
-            src_radio.change(
-                lambda t: (gr.update(visible=t == "Archivo Local"),
-                           gr.update(visible=t == "URL de Drive / Web")),
-                src_radio, [local_vid, url_vid],
+            btn_analyze.click(
+                do_analyze, [local_vid, url_vid], [frame_sl, vid_info, s_vid]
             )
-            btn_analyze.click(do_analyze, [local_vid, url_vid], [frame_sl, info_out])
-            btn_prev.click(do_snap, [local_vid, url_vid, frame_sl, gr.State(False), frame_name],
-                           [frame_out, frame_path, s_frame_path])
-            btn_snap.click(do_snap, [local_vid, url_vid, frame_sl, gr.State(True), frame_name],
-                           [frame_out, frame_path, s_frame_path])
+            btn_snap.click(do_snap, [s_vid, frame_sl], [frame_prev, s_frame])
 
-        # ── 02  IMAGEN — I2I + I2V en una sola tab ───────────────────────────
-        with gr.Tab("02  IMAGEN"):
+            btn_to_editar.click(lambda: gr.update(selected=1), None, tabs)
+            # btn_to_imagen wired after tab 03 is defined (see bottom)
 
-            # ── SECCIÓN A: ESTILIZAR IMAGEN (I2I) ────────────────────────────
-            gr.HTML('<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">① ESTILIZAR IMAGEN — WaveSpeed Z-Image</div>')
-
-            i2i_src_r = gr.Radio(
-                ["Archivo Local", "URL de Drive / Web"],
-                value="URL de Drive / Web", label="Imagen de Entrada",
-            )
-            img_base_local = gr.Image(label="Subir Imagen", type="filepath", visible=False, height=200)
-            img_base_url   = gr.Textbox(label="URL de la Imagen (auto-llenado desde tab 01)", visible=True, lines=1)
-
-            # Auto-fill from pipeline state when tab loads
-            demo.load(lambda p: gr.update(value=p) if p else gr.update(), s_frame_path, img_base_url)
+        # ══════════════════════════════════════════════════════════════════════
+        # 02  EDITAR  (opcional)
+        # ══════════════════════════════════════════════════════════════════════
+        with gr.Tab("02  EDITAR  (opcional)", id=1):
+            gr.HTML('<div class="pipe-label">Recorta el segmento que necesitas · opcional</div>')
 
             with gr.Row():
-                style_dd    = gr.Dropdown(list(ESTILOS.keys()), value="Anime", label="Estilo Visual")
-                imagination = gr.Slider(0, 10, value=4, step=0.1,
-                                        label="Creatividad — 0 = fiel al original · 10 = libre", scale=2)
+                cut_start = gr.Slider(0, 600, value=0,  step=0.5, label="Inicio (segundos)")
+                cut_end   = gr.Slider(0, 600, value=10, step=0.5, label="Fin (segundos)")
 
-            style_prompt = gr.Textbox(label="Descripción del Estilo (editable)", lines=3, value=ESTILOS["Anime"])
+            btn_cut  = gr.Button("RECORTAR", variant="primary")
+            cut_prev = gr.Video(label="Segmento Recortado", height=240)
 
-            btn_stylize = gr.Button("① GENERAR IMAGEN ESTILIZADA", variant="primary")
+            gr.HTML('<hr class="step-divider">')
+            btn_to_imagen2 = gr.Button("→  CONTINUAR A IMAGEN", variant="primary")
 
-            with gr.Row():
-                est_img = gr.Image(label="Imagen Estilizada", height=280, scale=2)
-                est_url = gr.Textbox(label="URL Imagen Estilizada → pasa a ②", interactive=False,
-                                     lines=3, elem_classes=["result-url"], scale=1)
+            btn_cut.click(do_cut, [s_vid, cut_start, cut_end], [cut_prev, s_vid])
+            # btn_to_imagen2 wired after tab 03 is defined
 
-            gr.HTML('<div class="pipeline-arrow">↓ URL de imagen estilizada se carga automáticamente en ②</div>')
+        # ══════════════════════════════════════════════════════════════════════
+        # 03  IMAGEN — I2I
+        # ══════════════════════════════════════════════════════════════════════
+        with gr.Tab("03  IMAGEN", id=2):
+            gr.HTML('<div class="pipe-label">Estiliza el fotograma con un modelo de imagen</div>')
 
-            # ── SECCIÓN B: GENERAR VIDEO (I2V - Kling) ───────────────────────
-            gr.HTML('<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin:14px 0;">② GENERAR VIDEO — Kling Motion Transfer</div>')
-
-            i2v_img_url = gr.Textbox(label="URL Imagen de Referencia (auto-llenado desde ①)", lines=1)
-            i2v_vid_url = gr.Textbox(label="URL del Video de Movimiento (referencia de pose)", lines=1)
-
-            with gr.Row():
-                i2v_model  = gr.Dropdown(list(KLING_MODELS.keys()), value=list(KLING_MODELS.keys())[0], label="Modelo Kling")
-                i2v_orient = gr.Dropdown(["0","90","180","270"], value="0", label="Orientación del personaje")
-
-            i2v_prompt = gr.Textbox(label="Prompt (opcional — describe el movimiento)", lines=2,
-                                    placeholder="Ej: smooth natural walking motion, wildlife documentary style")
-            i2v_audio  = gr.Checkbox(label="Mantener Audio Original del video de referencia", value=True)
-
-            btn_i2v = gr.Button("② GENERAR VIDEO", variant="primary")
+            frame_disp = gr.Image(label="Fotograma de Referencia (capturado en paso 01)", height=220, interactive=False)
 
             with gr.Row():
-                i2v_result     = gr.Video(label="Video Generado", scale=2)
-                i2v_result_url = gr.Textbox(label="URL del Video", interactive=False,
-                                            lines=3, elem_classes=["result-url"], scale=1)
+                estilo_dd = gr.Dropdown(list(ESTILOS.keys()), value="Anime", label="Estilo Visual", scale=1)
+                i2i_model = gr.Dropdown(list(I2I_MODELS.keys()), value=list(I2I_MODELS.keys())[0], label="Modelo I2I", scale=1)
 
-            # ── SECCIÓN C: GUARDAR EN REGISTRO ───────────────────────────────
-            with gr.Accordion("GUARDAR EN REGISTRO", open=False):
-                gr.HTML('<p style="color:#555;font-size:11px;letter-spacing:1.5px;margin:0 0 10px;">Datos se auto-completan al generar imagen y video.</p>')
-                with gr.Row():
-                    reg_id   = gr.Textbox(label="ID Video de Origen")
-                    reg_user = gr.Textbox(label="Miembro", value="Mateo")
-                    reg_mm   = gr.Dropdown(["Mateo","Miguel","Wilson","Olenka","Fabio","Rodrigo"], label="Responsable", value="Mateo")
-                    reg_est  = gr.Dropdown(list(ESTILOS.keys()), label="Estilo")
-                reg_pi  = gr.Textbox(label="Prompt Imagen (auto)", lines=2)
-                reg_li  = gr.Textbox(label="URL Imagen Generada (auto)", elem_classes=["result-url"])
-                reg_pv  = gr.Textbox(label="Prompt Video (auto)", lines=2)
-                reg_lv  = gr.Textbox(label="URL Video Generado (auto)", elem_classes=["result-url"])
-                reg_lo  = gr.Textbox(label="URL Imagen/Video Original (auto)")
-                btn_reg = gr.Button("GUARDAR EN REGISTRO", variant="primary")
-                reg_st  = gr.Textbox(label="Estado", interactive=False)
+            prompt_i = gr.Textbox(label="Prompt de estilo", lines=2, value=ESTILOS["Anime"])
 
-            # ── Wiring ────────────────────────────────────────────────────────
-            i2i_src_r.change(
-                lambda t: (gr.update(visible=t == "Archivo Local"),
-                           gr.update(visible=t == "URL de Drive / Web")),
-                i2i_src_r, [img_base_local, img_base_url],
-            )
-            style_dd.change(fill_style_prompt, style_dd, style_prompt)
+            btn_stylize  = gr.Button("GENERAR IMAGEN ESTILIZADA", variant="primary")
+            img_out      = gr.Image(label="Imagen Estilizada", height=300)
+            img_url_show = gr.Textbox(label="URL resultado (auto-cargado en V2V)", interactive=False, lines=2)
 
-            # I2I: generate → auto-fill styled URL into I2V image input
+            gr.HTML('<hr class="step-divider">')
+            btn_to_v2v = gr.Button("→  CONTINUAR A V2V", variant="primary")
+
+            estilo_dd.change(lambda s: ESTILOS.get(s, ""), estilo_dd, prompt_i)
+
             btn_stylize.click(
                 do_stylize,
-                [img_base_local, img_base_url, style_dd, style_prompt, imagination, api_key_st],
-                [est_img, est_url, i2v_img_url],
-            ).then(
-                # Also populate registro fields
-                lambda out_url, prompt, orig_url: (out_url, prompt, orig_url),
-                [est_url, style_prompt, img_base_url],
-                [reg_li, reg_pi, reg_lo],
+                [s_frame, estilo_dd, prompt_i, i2i_model, api_key_st],
+                [img_out, s_img_url, s_prompt_i],
+            ).then(lambda u: u, s_img_url, img_url_show)
+
+            # btn_to_v2v wired after tab 04 is defined
+
+        # ══════════════════════════════════════════════════════════════════════
+        # 04  V2V
+        # ══════════════════════════════════════════════════════════════════════
+        with gr.Tab("04  V2V", id=3):
+            gr.HTML('<div class="pipe-label">Imagen estilizada + video de referencia → video estilizado</div>')
+
+            with gr.Row():
+                v2v_img_show = gr.Image(label="Imagen Estilizada (auto-cargada del paso 03)", height=200, interactive=False, scale=1)
+                v2v_vid_show = gr.Textbox(label="Video de referencia (auto-cargado del paso 01/02)", interactive=False, lines=4, scale=1)
+
+            v2v_model = gr.Dropdown(list(V2V_MODELS.keys()), value=list(V2V_MODELS.keys())[0], label="Modelo V2V")
+            prompt_v  = gr.Textbox(
+                label="Prompt de movimiento (opcional Kling · obligatorio WAN 2.7)",
+                lines=2,
+                placeholder="Ej: smooth natural motion, realistic movement"
             )
 
-            # I2V: generate → auto-fill video URL into registro
-            btn_i2v.click(
-                do_motion,
-                [img_base_local, i2v_img_url, i2v_vid_url, i2v_model,
-                 i2v_prompt, i2v_orient, i2v_audio, api_key_st],
-                [i2v_result, i2v_result_url],
-            ).then(
-                lambda out_url, prompt: (out_url, prompt),
-                [i2v_result_url, i2v_prompt],
-                [reg_lv, reg_pv],
-            )
+            btn_v2v      = gr.Button("GENERAR VIDEO ESTILIZADO", variant="primary")
+            vid_out      = gr.Video(label="Video Estilizado", height=340)
+            vid_url_show = gr.Textbox(label="URL del resultado", interactive=False, lines=2)
 
-            btn_reg.click(
-                send_registro,
-                [reg_id, reg_user, reg_mm, reg_est, reg_pi, reg_li, reg_pv, reg_lv, reg_lo],
-                reg_st,
-            )
+            gr.HTML('<hr class="step-divider"><div class="pipe-label">Cuando estés conforme · guarda en el registro</div>')
 
-        # ── 03  V2V TRANSFORM ─────────────────────────────────────────────────
-        with gr.Tab("03  V2V"):
-            gr.HTML('<div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">VIDEO → VIDEO — Transformación completa de estilo</div>')
-
-            v2v_src_r = gr.Radio(
-                ["Archivo Local", "URL de Drive / Web"],
-                value="URL de Drive / Web", label="Fuente del Video",
-            )
-            with gr.Row():
-                v2v_local = gr.Video(label="Video a Transformar", sources=["upload"], visible=False, scale=2)
-                v2v_url   = gr.Textbox(label="URL del Video Original", scale=2)
-            v2v_embed = gr.HTML("")
-
-            with gr.Row():
-                v2v_model = gr.Dropdown(list(V2V_MODELS.keys()), value=list(V2V_MODELS.keys())[0], label="Modelo V2V")
-                v2v_res   = gr.Dropdown(["480p","720p","1080p","4k"], value="720p", label="Resolución")
-                v2v_dur   = gr.Slider(0, 10, value=5, step=1, label="Duración (seg · 0 = automático)")
-
-            v2v_prompt = gr.Textbox(label="Prompt — Describe la transformación", lines=3,
-                                    placeholder="Ej: cyberpunk aesthetic, neon lights cyan and magenta, dark rainy streets...")
-            v2v_neg    = gr.Textbox(label="Prompt Negativo (WAN 2.7) — Qué evitar", lines=1,
-                                    placeholder="Ej: blurry, distorted, low quality, watermark")
-
-            with gr.Row():
-                ltx_mode  = gr.Dropdown(["pose","depth","canny"], value="pose", label="LTX · Modo de Control")
-                ltx_audio = gr.Dropdown(["preserve","generate","none"], value="preserve", label="LTX · Audio")
-
-            with gr.Row():
-                v2v_strength = gr.Slider(0.1, 1.0, value=0.85, step=0.05, label="Intensidad (Seedance)")
-                v2v_guidance = gr.Slider(1.0, 15.0, value=5.0, step=0.5, label="Adherencia al Prompt")
-                v2v_steps    = gr.Slider(10, 50, value=30, step=5, label="Pasos de Inferencia")
-
-            btn_v2v = gr.Button("▶  TRANSFORMAR VIDEO", variant="primary")
-
-            with gr.Row():
-                v2v_result     = gr.Video(label="Video Transformado", scale=2)
-                v2v_result_url = gr.Textbox(label="URL del Video Generado", interactive=False,
-                                            lines=3, elem_classes=["result-url"], scale=1)
-
-            with gr.Accordion("GUARDAR EN REGISTRO", open=False):
-                gr.HTML('<p style="color:#555;font-size:11px;letter-spacing:1.5px;margin:0 0 10px;">URL y prompt se auto-completan al generar.</p>')
+            with gr.Group():
+                gr.HTML('<div style="font-size:10px;color:#444;letter-spacing:2px;text-transform:uppercase;padding:8px 0 4px;">GUARDAR EN REGISTRO</div>')
                 with gr.Row():
-                    v2v_reg_id   = gr.Textbox(label="ID Video")
-                    v2v_reg_user = gr.Textbox(label="Miembro", value="Mateo")
-                    v2v_reg_mm   = gr.Dropdown(["Mateo","Miguel","Wilson","Olenka","Fabio","Rodrigo"], label="Responsable", value="Mateo")
-                    v2v_reg_est  = gr.Dropdown(list(ESTILOS.keys()), label="Estilo")
-                v2v_reg_pv  = gr.Textbox(label="Prompt Video (auto)", lines=2)
-                v2v_reg_lv  = gr.Textbox(label="URL Video Generado (auto)", elem_classes=["result-url"])
-                v2v_reg_lo  = gr.Textbox(label="URL Video Original (auto)")
-                v2v_reg_pi  = gr.Textbox(label="Prompt Imagen (opcional)", lines=2)
-                v2v_reg_li  = gr.Textbox(label="URL Imagen Referencia (opcional)")
-                btn_v2v_reg = gr.Button("GUARDAR EN REGISTRO", variant="primary")
-                v2v_reg_st  = gr.Textbox(label="Estado", interactive=False)
-
-            v2v_src_r.change(
-                lambda t: (gr.update(visible=t == "Archivo Local"),
-                           gr.update(visible=t == "URL de Drive / Web")),
-                v2v_src_r, [v2v_local, v2v_url],
-            )
-            v2v_url.change(lambda u: drive_embed(u, 220), v2v_url, v2v_embed)
+                    save_vid_id  = gr.Textbox(label="ID Video Original", scale=2)
+                    save_miembro = gr.Dropdown(MIEMBROS, value=MIEMBROS[0], label="Miembro", scale=1)
+                    save_estilo  = gr.Dropdown(list(ESTILOS.keys()), label="Estilo", scale=1)
+                btn_save = gr.Button("✓  GUARDAR Y FINALIZAR", variant="primary")
+                save_st  = gr.Textbox(label="Estado", interactive=False, lines=1)
 
             btn_v2v.click(
                 do_v2v,
-                [v2v_local, v2v_url, v2v_model, v2v_prompt, v2v_neg,
-                 v2v_strength, v2v_guidance, v2v_steps, v2v_res, v2v_dur,
-                 ltx_mode, ltx_audio, api_key_st],
-                [v2v_result, v2v_result_url],
-            ).then(
-                lambda out_url, prompt, orig: (out_url, prompt, orig),
-                [v2v_result_url, v2v_prompt, v2v_url],
-                [v2v_reg_lv, v2v_reg_pv, v2v_reg_lo],
+                [s_img_url, s_vid, v2v_model, prompt_v, api_key_st],
+                [vid_out, s_vid_out],
+            ).then(lambda u: u, s_vid_out, vid_url_show)
+
+            btn_save.click(
+                do_save,
+                [save_vid_id, save_miembro, save_estilo,
+                 s_prompt_i, s_img_url, prompt_v, s_vid_out, s_vid],
+                save_st,
             )
 
-            btn_v2v_reg.click(
-                send_registro,
-                [v2v_reg_id, v2v_reg_user, v2v_reg_mm, v2v_reg_est,
-                 v2v_reg_pi, v2v_reg_li, v2v_reg_pv, v2v_reg_lv, v2v_reg_lo],
-                v2v_reg_st,
-            )
+    # ── Cross-tab navigation wiring (must be after all tabs are defined) ──────
 
-        # ── 04  EDITAR ────────────────────────────────────────────────────────
-        with gr.Tab("04  EDITAR"):
-            ed_src_r = gr.Radio(
-                ["Archivo Local", "URL de Drive / Web"],
-                value="URL de Drive / Web", label="Fuente",
-            )
-            with gr.Row():
-                ed_local = gr.Video(label="Video", sources=["upload"], visible=False, scale=2)
-                ed_url   = gr.Textbox(label="URL del Video", scale=2)
-            ed_embed = gr.HTML("")
-            ed_url.change(lambda u: drive_embed(u, 200), ed_url, ed_embed)
-            ed_src_r.change(
-                lambda t: (gr.update(visible=t == "Archivo Local"),
-                           gr.update(visible=t == "URL de Drive / Web")),
-                ed_src_r, [ed_local, ed_url],
-            )
+    def _go_imagen(frame):
+        img = gr.update(value=frame) if frame else gr.update()
+        return gr.update(selected=2), img
 
-            gr.HTML('<hr><p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">RECORTAR SEGMENTO</p>')
-            with gr.Row():
-                cut_start = gr.Slider(0, 600, value=0,  step=0.5, label="Inicio (segundos)")
-                cut_end   = gr.Slider(0, 600, value=30, step=0.5, label="Fin (segundos)")
-                cut_name  = gr.Textbox(label="Nombre del corte", scale=1)
-            btn_cut    = gr.Button("CORTAR", variant="primary")
-            cut_result = gr.Video(label="Segmento Cortado")
-            btn_cut.click(do_cut, [ed_local, ed_url, cut_start, cut_end, cut_name], cut_result)
+    def _go_v2v(img_url, vid):
+        img = gr.update(value=img_url) if img_url else gr.update()
+        txt = gr.update(value=str(vid)) if vid else gr.update()
+        return gr.update(selected=3), img, txt
 
-            gr.HTML('<hr><p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">PARTIR EN PARTES IGUALES</p>')
-            with gr.Row():
-                split_n   = gr.Dropdown(["2","3","4","5"], value="2", label="Número de Partes")
-                split_pfx = gr.Textbox(label="Prefijos (separados por coma)", placeholder="intro, cuerpo, cierre")
-            btn_split    = gr.Button("PARTIR", variant="primary")
-            split_result = gr.Textbox(label="Rutas generadas", interactive=False, lines=5)
-            btn_split.click(do_split, [ed_local, ed_url, split_n, split_pfx], split_result)
+    btn_to_imagen.click(_go_imagen, s_frame, [tabs, frame_disp])
+    btn_to_imagen2.click(_go_imagen, s_frame, [tabs, frame_disp])
+    btn_to_v2v.click(_go_v2v, [s_img_url, s_vid], [tabs, v2v_img_show, v2v_vid_show])
 
-            gr.HTML('<hr><p style="color:#555;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 10px;">UNIR VIDEOS</p>')
-            merge_files  = gr.File(label="Selecciona los videos a unir", file_count="multiple", file_types=["video"])
-            merge_name   = gr.Textbox(label="Nombre del resultado")
-            btn_merge    = gr.Button("UNIR", variant="primary")
-            merge_result = gr.Video(label="Video Unido")
-            btn_merge.click(do_merge, [merge_files, merge_name], merge_result)
+    # Also refresh frame_disp whenever a new frame is snapped (user may stay on tab 01)
+    btn_snap.click(
+        lambda f: gr.update(value=f) if f else gr.update(),
+        s_frame, frame_disp,
+    )
+
+    # ── API Key settings ───────────────────────────────────────────────────────
+    with gr.Accordion("⚙  Ajustes de API Key", open=False):
+        key_in  = gr.Textbox(label="WaveSpeed API Key", type="password", lines=1)
+        btn_key = gr.Button("GUARDAR KEY", variant="secondary")
+        btn_key.click(lambda k: k, key_in, api_key_st)
 
 
 if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        allowed_paths=[BASE_DIR],
-    )
+    demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=[BASE_DIR])

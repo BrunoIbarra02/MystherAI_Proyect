@@ -155,9 +155,24 @@ export default function Profile() {
               stylized.length === 0
                 ? <Empty text="Aún no has estilizado ningún video." />
                 : <div style={s.grid}>
-                    {stylized.map(v => (
-                      <VideoCard key={v.id} video={v} badge={{ color: '#22c55e', label: 'ESTILIZADO' }} />
-                    ))}
+                    {stylized.map(v => {
+                      const rev = v.estado_revision || 'Pendiente';
+                      const revColor = { Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[rev] || '#888';
+                      return (
+                        <VideoCard key={v.id} video={v} badge={{ color: revColor, label: rev.toUpperCase() }}>
+                          {rev === 'Rechazado' && v.comentario_revision && (
+                            <p style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic', margin: '6px 0 0', lineHeight: 1.4 }}>
+                              ↩ {v.comentario_revision}
+                            </p>
+                          )}
+                          {rev === 'Aprobado' && v.comentario_revision && (
+                            <p style={{ fontSize: '11px', color: '#22c55e', fontStyle: 'italic', margin: '6px 0 0', lineHeight: 1.4 }}>
+                              ✓ {v.comentario_revision}
+                            </p>
+                          )}
+                        </VideoCard>
+                      );
+                    })}
                   </div>
             )}
 
@@ -254,7 +269,7 @@ function AvatarUpload({ user, initials, uploading, onFileRef, onPickFile, onFile
 }
 
 /* ── Video Card ── */
-function VideoCard({ video, badge, actions }) {
+function VideoCard({ video, badge, actions, children }) {
   const [err, setErr] = useState(false);
   const thumb = thumbUrl(video.drive_link);
   return (
@@ -271,10 +286,12 @@ function VideoCard({ video, badge, actions }) {
       <div style={s.cardBody}>
         <p style={s.cardId}>#{video.id_video_equipo || video.video_id}</p>
         <div style={s.cardMeta}>
-          {video.mapa    && <span style={s.metaTag}>{video.mapa}</span>}
-          {video.especie && <span style={s.metaTag}>{video.especie}</span>}
+          {video.mapa     && <span style={s.metaTag}>{video.mapa}</span>}
+          {video.especie  && <span style={s.metaTag}>{video.especie}</span>}
+          {video.estilizado && <span style={{ ...s.metaTag, color: '#a78bfa' }}>{video.estilizado}</span>}
           {video.duracion && <span style={{ ...s.metaTag, opacity: 0.5 }}>{video.duracion}</span>}
         </div>
+        {children}
         {actions && <div style={s.cardActions}>{actions}</div>}
       </div>
     </div>
