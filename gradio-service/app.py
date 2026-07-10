@@ -90,9 +90,8 @@ def ws_out(res):
     return str(res) if res else None
 
 def on_load(request: gr.Request):
-    api_key   = request.query_params.get("api_key", DEFAULT_KEY)
     video_url = request.query_params.get("video_url", "")
-    return api_key, video_url
+    return DEFAULT_KEY, video_url
 
 # ── 01: CARGAR ────────────────────────────────────────────────────────────────
 def do_analyze(local, url):
@@ -455,11 +454,6 @@ with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base()) as dem
         s_frame, frame_disp,
     )
 
-    # ── API Key settings ───────────────────────────────────────────────────────
-    with gr.Accordion("⚙  Ajustes de API Key", open=False):
-        key_in  = gr.Textbox(label="WaveSpeed API Key", type="password", lines=1)
-        btn_key = gr.Button("GUARDAR KEY", variant="secondary")
-        btn_key.click(lambda k: k, key_in, api_key_st)
 
 
 if __name__ == "__main__":
