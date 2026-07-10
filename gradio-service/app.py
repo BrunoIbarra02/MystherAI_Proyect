@@ -274,7 +274,7 @@ video, img { border-radius:8px !important; }
 """
 
 # ── UI ────────────────────────────────────────────────────────────────────────
-with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base()) as demo:
+with gr.Blocks(title="MystherAI Studio") as demo:
 
     # Pipeline State
     api_key_st = gr.State(DEFAULT_KEY)
@@ -457,4 +457,10 @@ with gr.Blocks(title="MystherAI Studio", css=CSS, theme=gr.themes.Base()) as dem
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=[BASE_DIR])
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        allowed_paths=[BASE_DIR],
+        css=CSS,
+        theme=gr.themes.Base(),
+    )
