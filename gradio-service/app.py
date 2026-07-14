@@ -155,7 +155,12 @@ def do_stylize(frame_state, estilo, prompt_custom, model_label, key):
     try:
         cl    = wavespeed.Client(api_key=key)
         img_u = cl.upload(str(frame_state))
-        res   = cl.run(model, {"image": img_u, "prompt": prompt})
+        # Google Imagen models expect "images" (array); others expect "image" (string)
+        if model.startswith("google/"):
+            params = {"images": [img_u], "prompt": prompt}
+        else:
+            params = {"image": img_u, "prompt": prompt}
+        res   = cl.run(model, params)
         url   = ws_out(res)
         if not url: raise gr.Error("El modelo no devolvió resultado.")
         return url, url, prompt
