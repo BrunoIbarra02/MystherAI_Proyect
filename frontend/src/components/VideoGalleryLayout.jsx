@@ -610,7 +610,7 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                         {(() => {
                           const est = selectedVideo.estado_censo || 'Disponible';
                           const estadoColor = { Disponible: '#22c55e', Reservado: '#f59e0b', Estilizado: '#6b7280' }[est] || '#6b7280';
-                          const gradioUrl = `${GRADIO_BASE}/?api_key=${encodeURIComponent(apiKey || '')}&video_url=${encodeURIComponent(selectedVideo.drive_link || '')}`;
+                          const gradioUrl = `${GRADIO_BASE}/?video_url=${encodeURIComponent(selectedVideo.drive_link || '')}`;
                           return (
                             <div style={{ gridColumn: '1/-1', marginTop: '20px', padding: '18px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid #1e1e1e', borderRadius: '10px' }}>
                               {/* Estado badge */}
@@ -647,15 +647,12 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
                               {est === 'Reservado' && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                  {apiKey && selectedVideo.drive_link && (
+                                  {selectedVideo.drive_link && (
                                     <button
                                       onClick={() => window.open(gradioUrl, '_blank')}
                                       style={{ padding: '8px 22px', background: '#fff', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '11px', letterSpacing: '1.5px', cursor: 'pointer' }}>
                                       ABRIR EN GRADIO →
                                     </button>
-                                  )}
-                                  {!apiKey && (
-                                    <span style={{ fontSize: '11px', color: '#555' }}>Activa tu API Key en Estudio para abrir Gradio con este video precargado.</span>
                                   )}
                                   {(user?.is_staff || user?.display_name?.toLowerCase() === selectedVideo.reservado_por?.toLowerCase()) && (
                                     <button
@@ -674,6 +671,17 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
                               {reservaMsg && (
                                 <p style={{ marginTop: '10px', fontSize: '12px', color: reservaMsg.startsWith('✓') ? '#22c55e' : '#f87171', margin: '10px 0 0' }}>{reservaMsg}</p>
+                              )}
+
+                              {/* ── Admin: reject / delete from censo ── */}
+                              {user?.is_staff && (
+                                <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #1a1a1a' }}>
+                                  <button
+                                    onClick={() => handleDelete(selectedVideo.id)}
+                                    style={{ padding: '7px 18px', background: 'transparent', color: '#ef4444', border: '1px solid #ef444433', borderRadius: '6px', fontWeight: 700, fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}>
+                                    🗑 ELIMINAR DEL CENSO
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );

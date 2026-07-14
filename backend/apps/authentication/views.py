@@ -62,12 +62,20 @@ class ProfileDataView(APIView):
         ).values('id', 'video_id', 'id_video_equipo', 'mapa', 'especie',
                  'drive_link', 'estilizado', 'estado_revision', 'comentario_revision')
 
-        # Admin: all team reservations
+        # Admin: all team reservations + all registro entries
         all_reservations = []
+        all_registro = []
         if user.is_staff:
             all_reservations = list(
                 VideoMetadata.objects.filter(tipo='censo', estado_censo='Reservado')
                 .values('id', 'video_id', 'id_video_equipo', 'mapa', 'drive_link', 'reservado_por')
+            )
+            all_registro = list(
+                VideoMetadata.objects.filter(tipo='registro')
+                .values('id', 'video_id', 'id_video_equipo', 'usuario', 'mapa',
+                        'drive_link', 'imagen_link', 'estilizado',
+                        'estado_revision', 'comentario_revision')
+                .order_by('-id')
             )
 
         return Response({
@@ -75,6 +83,7 @@ class ProfileDataView(APIView):
             'reserved': list(reserved),
             'stylized': list(stylized),
             'all_reservations': all_reservations,
+            'all_registro': all_registro,
         })
 
 

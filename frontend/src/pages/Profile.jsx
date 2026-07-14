@@ -52,14 +52,18 @@ export default function Profile() {
   const { apiKey } = useApiKey();
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState('reservados');
+  const [tab, setTab]             = useState(null); // set after user loads
   const [liberando, setLiberando] = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileRef = useRef();
 
   useEffect(() => {
     api.get('/auth/profile-data/')
-      .then(r => setData(r.data))
+      .then(r => {
+        setData(r.data);
+        // Default tab: admin sees team registro first; regular users see their reserves
+        setTab(r.data?.user?.is_staff ? 'equipo_registro' : 'reservados');
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -98,11 +102,14 @@ export default function Profile() {
   const reserved        = data?.reserved        || [];
   const stylized        = data?.stylized        || [];
   const allReservations = data?.all_reservations || [];
+  const allRegistro     = data?.all_registro     || [];
 
-  const TABS = [
-    { key: 'reservados',  label: 'Mis Reservas', count: reserved.length,        icon: <Video size={14} /> },
-    { key: 'estilizados', label: 'Estilizados',  count: stylized.length,        icon: <CheckCircle size={14} /> },
-    ...(user?.is_staff ? [{ key: 'equipo', label: 'Equipo', count: allReservations.length, icon: <Users size={14} /> }] : []),
+  const TABS = user?.is_staff ? [
+    { key: 'equipo_registro', label: 'Estilizados Equipo', count: allRegistro.length,     icon: <CheckCircle size={14} /> },
+    { key: 'equipo',          label: 'Reservas Equipo',    count: allReservations.length, icon: <Users size={14} /> },
+  ] : [
+    { key: 'reservados',  label: 'Mis Reservas', count: reserved.length,  icon: <Video size={14} /> },
+    { key: 'estilizados', label: 'Estilizados',  count: stylized.length,  icon: <CheckCircle size={14} /> },
   ];
 
   return (
@@ -176,8 +183,39 @@ export default function Profile() {
                   </div>
             )}
 
+            {/* Estilizados del equipo (admin) */}
+            {tab === 'equipo_registro' && user?.is_staff && (
+              allRegistro.length === 0
+                ? <Empty text="No hay entradas en el registro todavía." />
+                : <div style={s.grid}>
+                    {allRegistro.map(v => {
+                      const rev = v.estado_revision || 'Pendiente';
+                      const revColor = { Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[rev] || '#888';
+                      // Use stylized image thumb if available, else video thumb
+                      const cardVideo = { ...v, drive_link: v.imagen_link || v.drive_link };
+                      return (
+                        <VideoCard key={v.id} video={cardVideo} badge={{ color: revColor, label: rev.toUpperCase() }}>
+                          <p style={{ fontSize: '11px', color: '#888', margin: '2px 0 0', fontWeight: 600 }}>
+                            {v.usuario || '—'}
+                          </p>
+                          {rev === 'Rechazado' && v.comentario_revision && (
+                            <p style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.4 }}>
+                              ↩ {v.comentario_revision}
+                            </p>
+                          )}
+                          {rev === 'Aprobado' && v.comentario_revision && (
+                            <p style={{ fontSize: '11px', color: '#22c55e', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.4 }}>
+                              ✓ {v.comentario_revision}
+                            </p>
+                          )}
+                        </VideoCard>
+                      );
+                    })}
+                  </div>
+            )}
+
             {/* Equipo (admin) */}
-            {tab === 'equipo' && user.is_staff && (
+            {tab === 'equipo' && user?.is_staff && (
               allReservations.length === 0
                 ? <Empty text="No hay reservas activas en el equipo." />
                 : <div style={s.grid}>
@@ -210,12 +248,16 @@ export default function Profile() {
 
             {/* Stats */}
             <div style={s.sideStats}>
-              <Stat num={reserved.length} label="Reservados" />
-              <div style={s.statDiv} />
-              <Stat num={stylized.length} label="Estilizados" />
-              {user.is_staff && <>
+              {user?.is_staff ? <>
+                <Stat num={allRegistro.length}     label="Registro" />
                 <div style={s.statDiv} />
-                <Stat num={allReservations.length} label="Equipo activo" />
+                <Stat num={allReservations.length} label="Activos" />
+                <div style={s.statDiv} />
+                <Stat num={allRegistro.filter(v => v.estado_revision === 'Pendiente').length} label="Pendientes" />
+              </> : <>
+                <Stat num={reserved.length} label="Reservados" />
+                <div style={s.statDiv} />
+                <Stat num={stylized.length} label="Estilizados" />
               </>}
             </div>
 
