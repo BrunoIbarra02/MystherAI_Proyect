@@ -52,9 +52,7 @@ I2I_MODELS = {
 }
 
 V2V_MODELS = {
-    "Kling V2.6 Std — Motion Transfer": "kwaivgi/kling-v2.6-std/motion-control",
-    "Kling V2.6 Pro — Alta Fidelidad":  "kwaivgi/kling-v2.6-pro/motion-control",
-    "WAN 2.7 — Estilo Total":           "alibaba/wan-2.7/video-edit",
+    "Kling Video O3 Pro — Video Edit": "kwaivgi/kling-video-o3-pro/video-edit",
 }
 
 MIEMBROS = ["Katty", "Fabio", "Wilson", "Olenka", "Rodrigo", "Bruno"]
@@ -175,24 +173,20 @@ def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key):
     model = V2V_MODELS.get(model_label)
     if not model: raise gr.Error("Selecciona un modelo V2V.")
     try:
-        cl        = wavespeed.Client(api_key=key)
-        vid_local = dl_temp(vid_state)
-        vid_up    = cl.upload(vid_local)
+        cl = wavespeed.Client(api_key=key)
 
-        if "kling" in model:
-            params = {
-                "image":           img_url_state,
-                "video":           vid_up,
-                "prompt":          prompt_vid or "",
-                "negative_prompt": "",
-            }
+        # Pass URL directly to avoid 413 on large files.
+        # For local files uploaded via Gradio, upload to WaveSpeed first.
+        if str(vid_state).startswith("http"):
+            vid_input = _drive_dl(vid_state)
         else:
-            params = {
-                "video":           vid_up,
-                "image":           img_url_state,
-                "prompt":          prompt_vid or "",
-                "negative_prompt": "",
-            }
+            vid_input = cl.upload(str(vid_state))
+
+        params = {
+            "video":           vid_input,
+            "prompt":          prompt_vid or "",
+            "negative_prompt": "",
+        }
 
         res    = cl.run(model, params)
         result = ws_out(res)
@@ -400,9 +394,9 @@ with gr.Blocks(title="MystherAI Studio") as demo:
 
             v2v_model = gr.Dropdown(list(V2V_MODELS.keys()), value=list(V2V_MODELS.keys())[0], label="Modelo V2V")
             prompt_v  = gr.Textbox(
-                label="Prompt de movimiento (opcional Kling · obligatorio WAN 2.7)",
+                label="Instrucción de edición (describe el estilo que quieres aplicar al video)",
                 lines=2,
-                placeholder="Ej: smooth natural motion, realistic movement"
+                placeholder="Ej: anime style, vibrant colors, Studio Ghibli quality"
             )
 
             btn_v2v      = gr.Button("GENERAR VIDEO ESTILIZADO", variant="primary")
