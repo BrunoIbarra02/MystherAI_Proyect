@@ -46,9 +46,9 @@ ESTILOS = {
 }
 
 I2I_MODELS = {
-    "Z-Image Nano  — Rápido":       "wavespeed-ai/z-image/nano",
-    "Z-Image Pro   — Alta calidad": "wavespeed-ai/z-image/pro",
-    "Hunyuan Image 3 — Hunyuan":    "tencent/hunyuan-image-3",
+    "Nano Banana Lite — Rápido":    "google/nano-banana-2-lite/edit",
+    "Nano Banana 2   — Estándar":   "google/nano-banana-2/edit",
+    "Hunyuan Image 3 — Premium":    "wavespeed-ai/hunyuan-image-3-instruct/edit",
 }
 
 V2V_MODELS = {
@@ -176,22 +176,17 @@ def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key):
 
         if "kling" in model:
             params = {
-                "image":                img_url_state,
-                "video":                vid_up,
-                "prompt":               prompt_vid or "",
-                "character_orientation": "0",
-                "keep_original_sound":  True,
+                "image":           img_url_state,
+                "video":           vid_up,
+                "prompt":          prompt_vid or "",
+                "negative_prompt": "",
             }
         else:
             params = {
-                "video":                   vid_up,
-                "prompt":                  prompt_vid or "",
-                "negative_prompt":         "",
-                "resolution":              "720p",
-                "duration":                0,
-                "audio_setting":           "auto",
-                "enable_prompt_expansion": False,
-                "seed":                    -1,
+                "video":           vid_up,
+                "image":           img_url_state,
+                "prompt":          prompt_vid or "",
+                "negative_prompt": "",
             }
 
         res    = cl.run(model, params)
