@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import VideoMetadata
+from .models import VideoMetadata, GradioError
 from .serializers import VideoMetadataSerializer
 
 # ==========================================
@@ -1469,3 +1469,27 @@ class DenegarVideoView(APIView):
             registro.aceptado = 'No'
             registro.save(update_fields=['estado_revision', 'comentario_revision', 'aceptado'])
             return Response({'ok': True, 'estado_revision': 'Rechazado'}, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GradioErrorView(APIView):
+    """Log and retrieve Gradio pipeline errors per team member."""
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        GradioError.objects.create(
+            miembro=request.data.get('miembro', ''),
+            paso=request.data.get('paso', ''),
+            modelo=request.data.get('modelo', ''),
+            mensaje=request.data.get('mensaje', '')[:2000],
+        )
+        return Response({'ok': True}, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        miembro = request.query_params.get('miembro')
+        qs = GradioError.objects.all()
+        if miembro:
+            qs = qs.filter(miembro__iexact=miembro)
+        data = list(qs[:500].values('id', 'miembro', 'paso', 'modelo', 'mensaje', 'timestamp'))
+        return Response(data)

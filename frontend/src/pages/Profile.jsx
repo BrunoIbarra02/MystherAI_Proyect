@@ -59,6 +59,8 @@ export default function Profile() {
   const [selectedReg, setSelectedReg] = useState(null);
   const [regComment, setRegComment]   = useState('');
   const [regLoading, setRegLoading]   = useState(false);
+  const [errores, setErrores]         = useState([]);
+  const [errFilter, setErrFilter]     = useState('');
   const fileRef = useRef();
 
   useEffect(() => {
@@ -101,6 +103,11 @@ export default function Profile() {
 
   const gradioUrl = (dl) =>
     `${GRADIO_BASE}/?video_url=${encodeURIComponent(dl || '')}`;
+
+  useEffect(() => {
+    if (!user?.is_staff) return;
+    api.get('/sheets/gradio-errors/').then(r => setErrores(r.data)).catch(() => {});
+  }, [user]);
 
   const reloadRegistro = async () => {
     const r = await api.get('/auth/profile-data/');
@@ -156,6 +163,7 @@ export default function Profile() {
   const TABS = user?.is_staff ? [
     { key: 'equipo_registro', label: 'Estilizados Equipo', count: allRegistro.length,     icon: <CheckCircle size={14} /> },
     { key: 'equipo',          label: 'Reservas Equipo',    count: allReservations.length, icon: <Users size={14} /> },
+    { key: 'errores',         label: 'Errores',            count: errores.length,         icon: <Video size={14} /> },
   ] : [
     { key: 'reservados',  label: 'Mis Reservas', count: reserved.length,  icon: <Video size={14} /> },
     { key: 'estilizados', label: 'Estilizados',  count: stylized.length,  icon: <CheckCircle size={14} /> },
@@ -369,6 +377,57 @@ export default function Profile() {
                             </div>
                           );
                         })}
+                      </div>
+                  }
+                </>
+              );
+            })()}
+
+            {/* Errores de Gradio (admin) */}
+            {tab === 'errores' && user?.is_staff && (() => {
+              const members = [...new Set(errores.map(e => e.miembro).filter(Boolean))].sort();
+              const filtered = errFilter ? errores.filter(e => e.miembro === errFilter) : errores;
+              return (
+                <>
+                  {/* Filter by member */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    <button onClick={() => setErrFilter('')} style={{
+                      padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                      cursor: 'pointer', border: '1px solid #33333388',
+                      background: !errFilter ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      color: !errFilter ? '#ddd' : '#555',
+                    }}>TODOS <span style={{ opacity: 0.5 }}>{errores.length}</span></button>
+                    {members.map(m => (
+                      <button key={m} onClick={() => setErrFilter(m)} style={{
+                        padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                        cursor: 'pointer', border: '1px solid #ef444433',
+                        background: errFilter === m ? 'rgba(239,68,68,0.12)' : 'transparent',
+                        color: errFilter === m ? '#ef4444' : '#555',
+                      }}>{m} <span style={{ opacity: 0.5 }}>{errores.filter(e => e.miembro === m).length}</span></button>
+                    ))}
+                  </div>
+
+                  {filtered.length === 0
+                    ? <Empty text="No hay errores registrados." />
+                    : <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {filtered.map(e => (
+                          <div key={e.id} style={{
+                            padding: '14px 18px', background: 'rgba(239,68,68,0.04)',
+                            border: '1px solid rgba(239,68,68,0.15)', borderRadius: '10px',
+                          }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, color: '#ef4444', fontSize: '12px' }}>{e.miembro || '—'}</span>
+                              <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(255,255,255,0.06)', color: '#888', fontWeight: 700 }}>{e.paso}</span>
+                              {e.modelo && <span style={{ fontSize: '10px', color: '#555', fontFamily: 'monospace' }}>{e.modelo}</span>}
+                              <span style={{ marginLeft: 'auto', fontSize: '10px', color: '#333' }}>
+                                {new Date(e.timestamp).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: '12px', color: '#888', margin: 0, fontFamily: 'monospace', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                              {e.mensaje}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                   }
                 </>

@@ -91,6 +91,18 @@ def on_load(request: gr.Request):
     video_url = request.query_params.get("video_url", "")
     return DEFAULT_KEY, video_url
 
+def log_error(miembro, paso, mensaje, modelo=""):
+    """Fire-and-forget: log a Gradio pipeline error to the backend."""
+    try:
+        req.post(f"{BACKEND_URL}/api/sheets/gradio-errors/", json={
+            "miembro": miembro or "Desconocido",
+            "paso":    paso,
+            "modelo":  modelo,
+            "mensaje": str(mensaje)[:2000],
+        }, timeout=4)
+    except Exception:
+        pass
+
 # ── 01: CARGAR ────────────────────────────────────────────────────────────────
 def do_analyze(local, url):
     try:
@@ -143,7 +155,7 @@ def do_cut(vid_state, start, end):
     except Exception as e: raise gr.Error(f"Error al cortar: {e}")
 
 # ── 03: IMAGEN ────────────────────────────────────────────────────────────────
-def do_stylize(frame_state, estilo, prompt_custom, model_label, key):
+def do_stylize(frame_state, estilo, prompt_custom, model_label, key, miembro):
     if not key: raise gr.Error("Configura tu API Key.")
     if not frame_state: raise gr.Error("Captura un fotograma en el paso 01 primero.")
     prompt = prompt_custom.strip() or ESTILOS.get(estilo, "")
@@ -163,10 +175,12 @@ def do_stylize(frame_state, estilo, prompt_custom, model_label, key):
         if not url: raise gr.Error("El modelo no devolvió resultado.")
         return url, url, prompt
     except gr.Error: raise
-    except Exception as e: raise gr.Error(f"Error I2I ({model_label}): {e}")
+    except Exception as e:
+        log_error(miembro, "I2I", e, model)
+        raise gr.Error(f"Error I2I ({model_label}): {e}")
 
 # ── 04: V2V ───────────────────────────────────────────────────────────────────
-def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key):
+def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key, miembro):
     if not key: raise gr.Error("Configura tu API Key.")
     if not img_url_state: raise gr.Error("Genera la imagen estilizada en el paso 03 primero.")
     if not vid_state:     raise gr.Error("Carga el video en el paso 01 primero.")
@@ -193,7 +207,9 @@ def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key):
         if not result: raise gr.Error("El modelo no devolvió resultado.")
         return result, result
     except gr.Error: raise
-    except Exception as e: raise gr.Error(f"Error V2V ({model_label}): {e}")
+    except Exception as e:
+        log_error(miembro, "V2V", e, model)
+        raise gr.Error(f"Error V2V ({model_label}): {e}")
 
 # ── GUARDAR ───────────────────────────────────────────────────────────────────
 def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url, orig_url):
@@ -277,6 +293,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
     s_img_url  = gr.State("")   # styled image url (result of I2I)
     s_vid_out  = gr.State("")   # v2v result video url
     s_prompt_i = gr.State("")   # prompt used in I2I step
+    s_miembro  = gr.State("")   # team member name (set in tab 01)
 
     demo.load(on_load, None, [api_key_st, s_vid])
 
@@ -310,6 +327,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
                     placeholder="https://drive.google.com/..."
                 )
 
+            miembro_dd  = gr.Dropdown(MIEMBROS, value=MIEMBROS[0], label="Miembro del equipo")
             btn_analyze = gr.Button("ANALIZAR VIDEO", variant="primary")
             vid_info    = gr.Textbox(label="Info", interactive=False, lines=1)
             frame_sl    = gr.Slider(0, 999, value=0, step=1, label="Fotograma")
@@ -323,6 +341,8 @@ with gr.Blocks(title="MystherAI Studio") as demo:
 
             # Pre-fill URL from query param
             demo.load(lambda u: gr.update(value=u) if u else gr.update(), s_vid, url_vid)
+
+            miembro_dd.change(lambda m: m, miembro_dd, s_miembro)
 
             btn_analyze.click(
                 do_analyze, [local_vid, url_vid], [frame_sl, vid_info, s_vid]
@@ -376,7 +396,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
 
             btn_stylize.click(
                 do_stylize,
-                [s_frame, estilo_dd, prompt_i, i2i_model, api_key_st],
+                [s_frame, estilo_dd, prompt_i, i2i_model, api_key_st, s_miembro],
                 [img_out, s_img_url, s_prompt_i],
             ).then(lambda u: u, s_img_url, img_url_show)
 
@@ -408,21 +428,20 @@ with gr.Blocks(title="MystherAI Studio") as demo:
             with gr.Group():
                 gr.HTML('<div style="font-size:10px;color:#444;letter-spacing:2px;text-transform:uppercase;padding:8px 0 4px;">GUARDAR EN REGISTRO</div>')
                 with gr.Row():
-                    save_vid_id  = gr.Textbox(label="ID Video Original", scale=2)
-                    save_miembro = gr.Dropdown(MIEMBROS, value=MIEMBROS[0], label="Miembro", scale=1)
-                    save_estilo  = gr.Dropdown(list(ESTILOS.keys()), label="Estilo", scale=1)
+                    save_vid_id = gr.Textbox(label="ID Video Original", scale=2)
+                    save_estilo = gr.Dropdown(list(ESTILOS.keys()), label="Estilo", scale=1)
                 btn_save = gr.Button("✓  GUARDAR Y FINALIZAR", variant="primary")
                 save_st  = gr.Textbox(label="Estado", interactive=False, lines=1)
 
             btn_v2v.click(
                 do_v2v,
-                [s_img_url, s_vid, v2v_model, prompt_v, api_key_st],
+                [s_img_url, s_vid, v2v_model, prompt_v, api_key_st, s_miembro],
                 [vid_out, s_vid_out],
             ).then(lambda u: u, s_vid_out, vid_url_show)
 
             btn_save.click(
                 do_save,
-                [save_vid_id, save_miembro, save_estilo,
+                [save_vid_id, s_miembro, save_estilo,
                  s_prompt_i, s_img_url, prompt_v, s_vid_out, s_vid],
                 save_st,
             )

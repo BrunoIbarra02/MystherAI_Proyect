@@ -39,3 +39,17 @@ class VideoMetadata(models.Model):
 
     def __str__(self):
         return f"{self.video_id} - {self.tipo}"
+
+
+class GradioError(models.Model):
+    miembro   = models.CharField(max_length=100, blank=True)
+    paso      = models.CharField(max_length=50, blank=True)   # I2I, V2V, CARGAR
+    modelo    = models.CharField(max_length=200, blank=True)
+    mensaje   = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.miembro} | {self.paso} | {self.timestamp:%Y-%m-%d %H:%M}"

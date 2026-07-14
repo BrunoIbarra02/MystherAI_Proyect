@@ -3,7 +3,7 @@ from .views import (
     VideoListView, VideoDetailView, FilterOptionsView, AutoRegisterVideoView,
     CensoSummaryView, RegistroSummaryView, SyncFromSheetsView, ExtractMetadataView,
     ReservarVideoView, LiberarVideoView, MarcarEstilizadoView,
-    AprobarVideoView, DenegarVideoView,
+    AprobarVideoView, DenegarVideoView, GradioErrorView,
 )
 
 urlpatterns = [
@@ -20,4 +20,5 @@ urlpatterns = [
     path('registro-summary/', RegistroSummaryView.as_view(), name='registro-summary'),
     path('sync-from-sheets/', SyncFromSheetsView.as_view(), name='sync-from-sheets'),
     path('extract-metadata/', ExtractMetadataView.as_view(), name='extract-metadata'),
+    path('gradio-errors/', GradioErrorView.as_view(), name='gradio-errors'),
 ]
