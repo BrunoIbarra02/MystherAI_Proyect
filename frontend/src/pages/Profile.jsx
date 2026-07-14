@@ -53,8 +53,12 @@ export default function Profile() {
   const [data, setData]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState(null); // set after user loads
-  const [liberando, setLiberando] = useState(null);
+  const [liberando, setLiberando]     = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [regFilter, setRegFilter]     = useState('Todos');
+  const [selectedReg, setSelectedReg] = useState(null);
+  const [regComment, setRegComment]   = useState('');
+  const [regLoading, setRegLoading]   = useState(false);
   const fileRef = useRef();
 
   useEffect(() => {
@@ -96,7 +100,52 @@ export default function Profile() {
   };
 
   const gradioUrl = (dl) =>
-    `${GRADIO_BASE}/?api_key=${encodeURIComponent(apiKey || '')}&video_url=${encodeURIComponent(dl || '')}`;
+    `${GRADIO_BASE}/?video_url=${encodeURIComponent(dl || '')}`;
+
+  const reloadRegistro = async () => {
+    const r = await api.get('/auth/profile-data/');
+    setData(r.data);
+  };
+
+  const handleRegAprobar = async () => {
+    if (!selectedReg) return;
+    setRegLoading(true);
+    try {
+      await api.post(`/sheets/videos/${selectedReg.id}/aprobar/`, { comentario: regComment });
+      const updated = { ...selectedReg, estado_revision: 'Aprobado', comentario_revision: regComment || null };
+      setSelectedReg(updated);
+      await reloadRegistro();
+    } catch (e) { alert(e.response?.data?.error || 'Error al aprobar.'); }
+    finally { setRegLoading(false); }
+  };
+
+  const handleRegDenegar = async () => {
+    if (!selectedReg) return;
+    if (!regComment.trim()) { alert('Escribe un comentario antes de denegar.'); return; }
+    setRegLoading(true);
+    try {
+      const res = await api.post(`/sheets/videos/${selectedReg.id}/denegar/`, { comentario: regComment });
+      if (res.data?.accion === 'eliminado') {
+        setSelectedReg(null);
+      } else {
+        setSelectedReg({ ...selectedReg, estado_revision: 'Rechazado', comentario_revision: regComment });
+      }
+      await reloadRegistro();
+    } catch (e) { alert(e.response?.data?.error || 'Error al denegar.'); }
+    finally { setRegLoading(false); }
+  };
+
+  const handleRegEliminar = async () => {
+    if (!selectedReg) return;
+    if (!window.confirm(`¿Eliminar definitivamente el registro #${selectedReg.video_id}?`)) return;
+    setRegLoading(true);
+    try {
+      await api.delete(`/sheets/videos/${selectedReg.id}/`);
+      setSelectedReg(null);
+      await reloadRegistro();
+    } catch (e) { alert('Error al eliminar.'); }
+    finally { setRegLoading(false); }
+  };
 
   const initials        = (user?.display_name || 'U').slice(0, 2).toUpperCase();
   const reserved        = data?.reserved        || [];
@@ -115,6 +164,91 @@ export default function Profile() {
   return (
     <>
       <AppNavbar backTo="/dashboard" />
+
+      {/* ── Admin: registro detail modal ── */}
+      {selectedReg && (
+        <div onClick={() => setSelectedReg(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)',
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '90%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto',
+            background: '#111', border: '1px solid #1c1c1c', borderRadius: '16px',
+            padding: '28px', position: 'relative',
+          }}>
+            <button onClick={() => setSelectedReg(null)} style={{
+              position: 'absolute', top: '14px', right: '18px',
+              background: 'none', border: 'none', color: '#555', fontSize: '22px', cursor: 'pointer',
+            }}>×</button>
+
+            {/* Header */}
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ fontSize: '10px', color: '#444', letterSpacing: '2px', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                REGISTRO · {selectedReg.usuario || '—'}
+              </p>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#e0e0e0', margin: 0, fontFamily: 'monospace' }}>
+                #{selectedReg.id_video_equipo || selectedReg.video_id}
+                {selectedReg.estilizado && <span style={{ marginLeft: '10px', fontSize: '13px', color: '#a78bfa', fontWeight: 600 }}>{selectedReg.estilizado}</span>}
+              </h3>
+            </div>
+
+            {/* Image preview */}
+            {(selectedReg.imagen_link || selectedReg.drive_link) && (() => {
+              const th = thumbUrl(selectedReg.imagen_link || selectedReg.drive_link);
+              return th ? (
+                <img src={th} alt="" style={{ width: '100%', borderRadius: '10px', marginBottom: '20px', maxHeight: '320px', objectFit: 'cover' }} />
+              ) : null;
+            })()}
+
+            {/* Current status */}
+            {(() => {
+              const rev = selectedReg.estado_revision || 'Pendiente';
+              const revColor = { Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[rev];
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+                  <span style={{ fontSize: '9px', color: '#444', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700 }}>ESTADO</span>
+                  <span style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: `${revColor}22`, color: revColor, border: `1px solid ${revColor}44` }}>
+                    {rev.toUpperCase()}
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Comment + actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <textarea
+                value={regComment}
+                onChange={e => setRegComment(e.target.value)}
+                placeholder="Comentario de retroalimentación (obligatorio para denegar)..."
+                style={{ width: '100%', background: '#161616', border: '1px solid #222', color: '#ccc', borderRadius: '8px', padding: '12px', fontSize: '13px', resize: 'vertical', minHeight: '80px', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button disabled={regLoading} onClick={handleRegAprobar} style={{
+                  padding: '10px 24px', background: '#22c55e', color: '#000', border: 'none',
+                  borderRadius: '8px', fontWeight: 700, fontSize: '12px', letterSpacing: '1.5px', cursor: 'pointer',
+                  opacity: regLoading ? 0.6 : 1,
+                }}>
+                  {regLoading ? '...' : '✓ APROBAR'}
+                </button>
+                <button disabled={regLoading} onClick={handleRegDenegar} style={{
+                  padding: '10px 24px', background: 'transparent', color: '#ef4444',
+                  border: '1px solid #ef444455', borderRadius: '8px', fontWeight: 700,
+                  fontSize: '12px', letterSpacing: '1.5px', cursor: 'pointer', opacity: regLoading ? 0.6 : 1,
+                }}>
+                  {regLoading ? '...' : '✕ DENEGAR'}
+                </button>
+                <button disabled={regLoading} onClick={handleRegEliminar} style={{
+                  marginLeft: 'auto', padding: '10px 18px', background: 'transparent',
+                  color: '#555', border: '1px solid #222', borderRadius: '8px',
+                  fontWeight: 700, fontSize: '11px', cursor: 'pointer', opacity: regLoading ? 0.6 : 1,
+                }}>
+                  🗑 ELIMINAR
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div style={s.loadingScreen}><div style={s.spinner} /></div>
@@ -184,35 +318,62 @@ export default function Profile() {
             )}
 
             {/* Estilizados del equipo (admin) */}
-            {tab === 'equipo_registro' && user?.is_staff && (
-              allRegistro.length === 0
-                ? <Empty text="No hay entradas en el registro todavía." />
-                : <div style={s.grid}>
-                    {allRegistro.map(v => {
-                      const rev = v.estado_revision || 'Pendiente';
-                      const revColor = { Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[rev] || '#888';
-                      // Use stylized image thumb if available, else video thumb
-                      const cardVideo = { ...v, drive_link: v.imagen_link || v.drive_link };
+            {tab === 'equipo_registro' && user?.is_staff && (() => {
+              const REV_FILTERS = ['Todos', 'Pendiente', 'Aprobado', 'Rechazado'];
+              const filtered = regFilter === 'Todos'
+                ? allRegistro
+                : allRegistro.filter(v => (v.estado_revision || 'Pendiente') === regFilter);
+              return (
+                <>
+                  {/* Filter bar */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    {REV_FILTERS.map(f => {
+                      const fColor = { Todos: '#888', Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[f];
+                      const active = regFilter === f;
                       return (
-                        <VideoCard key={v.id} video={cardVideo} badge={{ color: revColor, label: rev.toUpperCase() }}>
-                          <p style={{ fontSize: '11px', color: '#888', margin: '2px 0 0', fontWeight: 600 }}>
-                            {v.usuario || '—'}
-                          </p>
-                          {rev === 'Rechazado' && v.comentario_revision && (
-                            <p style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.4 }}>
-                              ↩ {v.comentario_revision}
-                            </p>
-                          )}
-                          {rev === 'Aprobado' && v.comentario_revision && (
-                            <p style={{ fontSize: '11px', color: '#22c55e', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.4 }}>
-                              ✓ {v.comentario_revision}
-                            </p>
-                          )}
-                        </VideoCard>
+                        <button key={f} onClick={() => setRegFilter(f)} style={{
+                          padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                          letterSpacing: '1px', cursor: 'pointer', border: `1px solid ${fColor}44`,
+                          background: active ? `${fColor}22` : 'transparent',
+                          color: active ? fColor : '#444',
+                        }}>
+                          {f.toUpperCase()}
+                          <span style={{ marginLeft: '6px', opacity: 0.6 }}>
+                            {f === 'Todos' ? allRegistro.length : allRegistro.filter(v => (v.estado_revision || 'Pendiente') === f).length}
+                          </span>
+                        </button>
                       );
                     })}
                   </div>
-            )}
+
+                  {filtered.length === 0
+                    ? <Empty text={`No hay entradas con estado "${regFilter}".`} />
+                    : <div style={s.grid}>
+                        {filtered.map(v => {
+                          const rev = v.estado_revision || 'Pendiente';
+                          const revColor = { Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[rev] || '#888';
+                          const cardVideo = { ...v, drive_link: v.imagen_link || v.drive_link };
+                          return (
+                            <div key={v.id} style={{ cursor: 'pointer' }}
+                              onClick={() => { setSelectedReg(v); setRegComment(v.comentario_revision || ''); }}>
+                              <VideoCard video={cardVideo} badge={{ color: revColor, label: rev.toUpperCase() }}>
+                                <p style={{ fontSize: '11px', color: '#888', margin: '2px 0 0', fontWeight: 600 }}>
+                                  {v.usuario || '—'}
+                                </p>
+                                {rev === 'Rechazado' && v.comentario_revision && (
+                                  <p style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic', margin: '4px 0 0', lineHeight: 1.4 }}>
+                                    ↩ {v.comentario_revision}
+                                  </p>
+                                )}
+                              </VideoCard>
+                            </div>
+                          );
+                        })}
+                      </div>
+                  }
+                </>
+              );
+            })()}
 
             {/* Equipo (admin) */}
             {tab === 'equipo' && user?.is_staff && (
