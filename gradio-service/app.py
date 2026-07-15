@@ -55,7 +55,6 @@ V2V_MODELS = {
     "Kling Video O3 Pro — Video Edit": "kwaivgi/kling-video-o3-pro/video-edit",
 }
 
-MIEMBROS = ["Katty", "Fabio", "Wilson", "Olenka", "Rodrigo", "Bruno"]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _drive_id(url):
@@ -89,7 +88,8 @@ def ws_out(res):
 
 def on_load(request: gr.Request):
     video_url = request.query_params.get("video_url", "")
-    return DEFAULT_KEY, video_url
+    usuario   = request.query_params.get("usuario", "")
+    return DEFAULT_KEY, video_url, usuario
 
 def log_error(miembro, paso, mensaje, modelo=""):
     """Fire-and-forget: log a Gradio pipeline error to the backend."""
@@ -295,7 +295,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
     s_prompt_i = gr.State("")   # prompt used in I2I step
     s_miembro  = gr.State("")   # team member name (set in tab 01)
 
-    demo.load(on_load, None, [api_key_st, s_vid])
+    demo.load(on_load, None, [api_key_st, s_vid, s_miembro])
 
     gr.HTML(f"""
     <div style="display:flex;align-items:center;gap:14px;padding:14px 0 12px;
@@ -327,7 +327,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
                     placeholder="https://drive.google.com/..."
                 )
 
-            miembro_dd  = gr.Dropdown(MIEMBROS, value=MIEMBROS[0], label="Miembro del equipo")
+            miembro_txt = gr.Textbox(label="Miembro del equipo", interactive=False, lines=1)
             btn_analyze = gr.Button("ANALIZAR VIDEO", variant="primary")
             vid_info    = gr.Textbox(label="Info", interactive=False, lines=1)
             frame_sl    = gr.Slider(0, 999, value=0, step=1, label="Fotograma")
@@ -339,10 +339,9 @@ with gr.Blocks(title="MystherAI Studio") as demo:
                 btn_to_editar = gr.Button("✂  EDITAR PRIMERO  →", variant="secondary", scale=1)
                 btn_to_imagen = gr.Button("→  CONTINUAR A IMAGEN  (saltar edición)", variant="primary", scale=2)
 
-            # Pre-fill URL from query param
+            # Pre-fill URL and member from query params
             demo.load(lambda u: gr.update(value=u) if u else gr.update(), s_vid, url_vid)
-
-            miembro_dd.change(lambda m: m, miembro_dd, s_miembro)
+            demo.load(lambda m: gr.update(value=m) if m else gr.update(), s_miembro, miembro_txt)
 
             btn_analyze.click(
                 do_analyze, [local_vid, url_vid], [frame_sl, vid_info, s_vid]

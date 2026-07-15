@@ -102,7 +102,7 @@ export default function Profile() {
   };
 
   const gradioUrl = (dl) =>
-    `${GRADIO_BASE}/?video_url=${encodeURIComponent(dl || '')}`;
+    `${GRADIO_BASE}/?video_url=${encodeURIComponent(dl || '')}&usuario=${encodeURIComponent(user?.display_name || '')}`;
 
   useEffect(() => {
     if (!user?.is_staff) return;
