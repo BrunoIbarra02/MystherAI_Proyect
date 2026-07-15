@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEFAULT_KEY = os.environ.get("WAVESPEED_API_KEY", "")
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8080")
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 FFMPEG      = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 
