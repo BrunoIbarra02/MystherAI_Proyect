@@ -23,6 +23,9 @@ class VideoMetadata(models.Model):
     duracion = models.CharField(max_length=100, blank=True, null=True)
     camara = models.CharField(max_length=100, blank=True, null=True)
     especie = models.CharField(max_length=100, blank=True, null=True)
+    plano = models.CharField(max_length=50, blank=True, null=True)
+    interior = models.CharField(max_length=20, blank=True, null=True)
+    accion = models.CharField(max_length=50, blank=True, null=True)
 
     # --- ENLACE PRINCIPAL ---
     drive_link = models.URLField(max_length=1000, blank=True, null=True)

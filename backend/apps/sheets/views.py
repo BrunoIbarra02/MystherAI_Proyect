@@ -135,7 +135,9 @@ class CensoSummaryView(APIView):
         total_videos = len(normalized_rows)
         humanos = sum(1 for r in normalized_rows if r.get("especie", "").lower() == "humano")
         animales = sum(1 for r in normalized_rows if r.get("especie", "").lower() == "animal")
-        sin_clasificar = total_videos - humanos - animales
+        multitud = sum(1 for r in normalized_rows if r.get("especie", "").lower() == "multitud")
+        entorno  = sum(1 for r in normalized_rows if r.get("especie", "").lower() == "entorno")
+        sin_clasificar = total_videos - humanos - animales - multitud - entorno
 
         durations = []
         for r in normalized_rows:
@@ -163,6 +165,8 @@ class CensoSummaryView(APIView):
             "totalVideos": total_videos,
             "humanos": humanos,
             "animales": animales,
+            "multitud": multitud,
+            "entorno": entorno,
             "sinClasificar": sin_clasificar,
             "duracionMedia": duracion_media,
             "totalMapas": total_mapas,
@@ -175,8 +179,10 @@ class CensoSummaryView(APIView):
         # Estadísticas de especies
         total_for_pct = total_videos if total_videos > 0 else 1
         especies_data = [
-            { "label": "Humano", "value": humanos, "percent": round((humanos / total_for_pct) * 100, 1), "color": "var(--neon-cyan)" },
-            { "label": "Animal", "value": animales, "percent": round((animales / total_for_pct) * 100, 1), "color": "#2ecc71" },
+            { "label": "Humano",   "value": humanos,  "percent": round((humanos  / total_for_pct) * 100, 1), "color": "var(--neon-cyan)" },
+            { "label": "Animal",   "value": animales, "percent": round((animales / total_for_pct) * 100, 1), "color": "#2ecc71" },
+            { "label": "Multitud", "value": multitud, "percent": round((multitud / total_for_pct) * 100, 1), "color": "#f39c12" },
+            { "label": "Entorno",  "value": entorno,  "percent": round((entorno  / total_for_pct) * 100, 1), "color": "#9b59b6" },
             { "label": "Sin Clasificar", "value": sin_clasificar, "percent": round((sin_clasificar / total_for_pct) * 100, 1), "color": "#ff4b2b" }
         ]
 
@@ -188,6 +194,8 @@ class CensoSummaryView(APIView):
                 "total": 0,
                 "human": 0,
                 "animal": 0,
+                "multitud": 0,
+                "entorno": 0,
                 "unclassified": 0,
                 "usuarios": { u: 0 for u in unique_users },
                 "genders": set(),
@@ -206,19 +214,23 @@ class CensoSummaryView(APIView):
                 stats["human"] += 1
             elif esp == "animal":
                 stats["animal"] += 1
+            elif esp == "multitud":
+                stats["multitud"] += 1
+            elif esp == "entorno":
+                stats["entorno"] += 1
             else:
                 stats["unclassified"] += 1
-                
+
             u = r.get("usuario", "").strip().upper()
             if u in stats["usuarios"]:
                 stats["usuarios"][u] += 1
-                
+
             gen = r.get("genero", "").lower()
-            if gen in ["hombre", "mujer"]:
+            if gen in ["hombre", "mujer", "mixto"]:
                 stats["genders"].add(gen)
-                
+
             etn = r.get("etnia", "").lower()
-            if etn in ["blanco", "moreno"]:
+            if etn in ["blanco", "moreno", "mixta"]:
                 stats["ethnicities"].add(etn)
 
         # Ordenar mapas por total descendente
@@ -230,6 +242,8 @@ class CensoSummaryView(APIView):
                 "total": s["total"],
                 "human": s["human"],
                 "animal": s["animal"],
+                "multitud": s["multitud"],
+                "entorno": s["entorno"],
                 "unclassified": s["unclassified"],
                 "mateo": s["usuarios"].get("MATEO", 0),
                 "miguel": s["usuarios"].get("MIGUEL", 0),
@@ -253,52 +267,63 @@ class CensoSummaryView(APIView):
         exclusivas_miguel = exclusivas_por_usuario.get("MIGUEL", [])
 
         # Estadisticas de genero
-        gender_counts = {"Hombre": 0, "Mujer": 0}
+        gender_counts = {"Hombre": 0, "Mujer": 0, "Mixto": 0}
         for r in normalized_rows:
-            gen = r.get("genero", "").strip().capitalize()
-            if gen in gender_counts:
-                gender_counts[gen] += 1
-                
+            gen = r.get("genero", "").strip()
+            gen_cap = gen.capitalize()
+            if gen_cap in gender_counts:
+                gender_counts[gen_cap] += 1
+            elif gen.lower() == "mixto":
+                gender_counts["Mixto"] += 1
+
         total_gender = sum(gender_counts.values())
         total_gender_pct = total_gender if total_gender > 0 else 1
         genero_data = [
             { "label": "Hombre", "value": gender_counts["Hombre"], "percent": round((gender_counts["Hombre"] / total_gender_pct) * 100, 1), "color": "var(--neon-cyan)" },
-            { "label": "Mujer", "value": gender_counts["Mujer"], "percent": round((gender_counts["Mujer"] / total_gender_pct) * 100, 1), "color": "var(--neon-purple)" }
+            { "label": "Mujer",  "value": gender_counts["Mujer"],  "percent": round((gender_counts["Mujer"]  / total_gender_pct) * 100, 1), "color": "var(--neon-purple)" },
+            { "label": "Mixto",  "value": gender_counts["Mixto"],  "percent": round((gender_counts["Mixto"]  / total_gender_pct) * 100, 1), "color": "#f39c12" }
         ]
 
         # Estadisticas de etnia
-        etnia_counts = {"Blanco": 0, "Moreno": 0}
+        etnia_counts = {"Blanco": 0, "Moreno": 0, "Mixta": 0}
         for r in normalized_rows:
-            etn = r.get("etnia", "").strip().capitalize()
-            if etn in etnia_counts:
-                etnia_counts[etn] += 1
-                
+            etn = r.get("etnia", "").strip()
+            etn_cap = etn.capitalize()
+            if etn_cap in etnia_counts:
+                etnia_counts[etn_cap] += 1
+            elif etn.lower() == "mixta":
+                etnia_counts["Mixta"] += 1
+
         total_etnia = sum(etnia_counts.values())
         total_etnia_pct = total_etnia if total_etnia > 0 else 1
         etnia_data = [
             { "label": "Blanco", "value": etnia_counts["Blanco"], "percent": round((etnia_counts["Blanco"] / total_etnia_pct) * 100, 1), "color": "#f39c12" },
-            { "label": "Moreno", "value": etnia_counts["Moreno"], "percent": round((etnia_counts["Moreno"] / total_etnia_pct) * 100, 1), "color": "#9b59b6" }
+            { "label": "Moreno", "value": etnia_counts["Moreno"], "percent": round((etnia_counts["Moreno"] / total_etnia_pct) * 100, 1), "color": "#9b59b6" },
+            { "label": "Mixta",  "value": etnia_counts["Mixta"],  "percent": round((etnia_counts["Mixta"]  / total_etnia_pct) * 100, 1), "color": "#e74c3c" }
         ]
 
         # Cruce de Genero y Etnia
         cruce_counts = {
-            "Hombre Blanco": 0,
-            "Hombre Moreno": 0,
-            "Mujer Blanco": 0,
-            "Mujer Moreno": 0
+            "Hombre Blanco": 0, "Hombre Moreno": 0, "Hombre Mixta": 0,
+            "Mujer Blanco":  0, "Mujer Moreno":  0, "Mujer Mixta":  0,
+            "Mixto Blanco":  0, "Mixto Moreno":  0, "Mixto Mixta":  0,
         }
         for r in normalized_rows:
-            gen = r.get("genero", "").strip().capitalize()
-            etn = r.get("etnia", "").strip().capitalize()
-            key = f"{gen} {etn}"
+            gen = r.get("genero", "").strip()
+            etn = r.get("etnia", "").strip()
+            gen_cap = gen.capitalize()
+            etn_cap = etn.capitalize()
+            key = f"{gen_cap} {etn_cap}"
             if key in cruce_counts:
                 cruce_counts[key] += 1
 
         cruce_gen_etnia = [
-            { "label": "Hombre Blanco", "value": cruce_counts["Hombre Blanco"], "color": "#ff7f50" },
-            { "label": "Hombre Moreno", "value": cruce_counts["Hombre Moreno"], "color": "var(--neon-cyan)" },
-            { "label": "Mujer Blanco", "value": cruce_counts["Mujer Blanco"], "color": "#e0115f" },
-            { "label": "Mujer Moreno", "value": cruce_counts["Mujer Moreno"], "color": "#8e44ad" }
+            { "label": k, "value": v, "color": {
+                "Hombre Blanco": "#ff7f50", "Hombre Moreno": "var(--neon-cyan)", "Hombre Mixta": "#00bcd4",
+                "Mujer Blanco":  "#e0115f", "Mujer Moreno":  "#8e44ad",           "Mujer Mixta":  "#bc13fe",
+                "Mixto Blanco":  "#f39c12", "Mixto Moreno":  "#2ecc71",           "Mixto Mixta":  "#3498db",
+            }.get(k, "#7f8c8d") }
+            for k, v in cruce_counts.items() if v > 0
         ]
 
         # Mapas solo hombres
@@ -325,7 +350,8 @@ class CensoSummaryView(APIView):
             "Rail": "#9c27b0",
             "Fija": "#e91e63",
             "1ra Persona": "#4caf50",
-            "Primera Persona": "#4caf50"
+            "Primera Persona": "#4caf50",
+            "A\xe9rea": "#f39c12",
         }
 
         camara_data_list = []
@@ -350,13 +376,63 @@ class CensoSummaryView(APIView):
         for dur in sorted(duration_counts.keys()):
             duracion_data.append({ "label": f"{dur}s", "value": duration_counts[dur] })
 
+        # INTERIOR stats
+        interior_counts = {}
+        for r in normalized_rows:
+            val = r.get("interior", "").strip()
+            if val:
+                interior_counts[val] = interior_counts.get(val, 0) + 1
+        interior_data = [
+            {"label": k, "value": v, "percent": round((v / total_for_pct) * 100, 1),
+             "color": "#00bcd4" if k == "Interior" else "#ff9800"}
+            for k, v in sorted(interior_counts.items(), key=lambda x: -x[1])
+        ]
+
+        # PLANO stats
+        plano_counts = {}
+        for r in normalized_rows:
+            val = r.get("plano", "").strip()
+            if val:
+                plano_counts[val] = plano_counts.get(val, 0) + 1
+        plano_colors = {
+            "Primer Plano": "#ff4b2b", "Plano Medio": "#f39c12",
+            "Plano Entero": "#2ecc71", "Plano General": "#00bcd4",
+            "Gran Plano General": "#3498db", "Picado": "#9c27b0",
+            "Plano Subjetivo": "#e91e63",
+        }
+        plano_data = [
+            {"label": k, "value": v, "percent": round((v / total_for_pct) * 100, 1),
+             "color": plano_colors.get(k, "#7f8c8d")}
+            for k, v in sorted(plano_counts.items(), key=lambda x: -x[1])
+        ]
+
+        # ACCION stats
+        accion_counts = {}
+        for r in normalized_rows:
+            val = r.get("accion", "").strip()
+            if val:
+                accion_counts[val] = accion_counts.get(val, 0) + 1
+        accion_colors = {
+            "Caminando": "#00f2ff", "Corriendo": "#ff4b2b",
+            "Est\xe1tico": "#f39c12", "Interacci\xf3n": "#bc13fe", "Escena": "#2ecc71",
+        }
+        accion_data = [
+            {"label": k, "value": v, "percent": round((v / total_for_pct) * 100, 1),
+             "color": accion_colors.get(k, "#7f8c8d")}
+            for k, v in sorted(accion_counts.items(), key=lambda x: -x[1])
+        ]
+
         # Action plan metrics
         mapas_solo_una_etnia = [m for m in unique_maps if len(map_stats[m]["ethnicities"]) == 1]
         fija_count = camera_counts.get("Fija", 0)
 
         # Plan de acción 100% dinámico
         action_plan = [
-            { "id": 1, "cat": "Especie", "title": "Clasificar videos en especie", "desc": f"Clasificar los {sin_clasificar} videos marcados como 'Nan' en especie (revisión manual urgente).", "priority": "critica", "deficit": f"{sin_clasificar} videos", "status": "Pendiente", "checked": False },
+            { "id": 1, "cat": "Especie", "title": "Clasificar videos en especie",
+              "desc": "¡Completado! Todos los videos clasificados con el nuevo sistema de etiquetas (Humano, Animal, Multitud, Entorno)." if sin_clasificar == 0 else f"Clasificar los {sin_clasificar} videos marcados como 'Nan' en especie (revisión manual urgente).",
+              "priority": "completada" if sin_clasificar == 0 else "critica",
+              "deficit": f"{sin_clasificar} videos", "status": "Completado" if sin_clasificar == 0 else "Pendiente",
+              "checked": sin_clasificar == 0 },
             { "id": 2, "cat": "Género x Mapa", "title": "Añadir mujeres en mapas masculinos", "desc": f"Añadir personajes femeninos en los {len(mapas_solo_hombres)} mapas que solo contienen hombres (Biblioteca, Desierto, etc.).", "priority": "alta", "deficit": f"{len(mapas_solo_hombres)} mapas", "status": "Pendiente", "checked": False },
             { "id": 3, "cat": "Etnia x Mapa", "title": "Diversificar etnias en mapas exclusivos", "desc": f"Introducir variedad étnica en los {len(mapas_solo_una_etnia)} mapas que solo cuentan con un solo tipo étnico.", "priority": "alta", "deficit": f"{len(mapas_solo_una_etnia)} mapas", "status": "Pendiente", "checked": False }
         ]
@@ -407,6 +483,9 @@ class CensoSummaryView(APIView):
             "mapasSoloHombres": mapas_solo_hombres,
             "camaraData": camara_data_list,
             "duracionData": duracion_data,
+            "interiorData": interior_data,
+            "planoData": plano_data,
+            "accionData": accion_data,
             "actionPlan": action_plan
         }
         return Response(data)
