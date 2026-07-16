@@ -52,7 +52,8 @@ I2I_MODELS = {
 }
 
 V2V_MODELS = {
-    "Kling Video O3 Pro — Video Edit": "kwaivgi/kling-video-o3-pro/video-edit",
+    "WAN 2.1 480p — Rápido (~1 min)":   "wavespeed-ai/wan-2.1/v2v-480p",
+    "Kling Video O3 Pro — Alta calidad": "kwaivgi/kling-video-o3-pro/video-edit",
 }
 
 
@@ -89,7 +90,8 @@ def ws_out(res):
 def on_load(request: gr.Request):
     video_url = request.query_params.get("video_url", "")
     usuario   = request.query_params.get("usuario", "")
-    return DEFAULT_KEY, video_url, usuario
+    video_id  = request.query_params.get("video_id", "")
+    return DEFAULT_KEY, video_url, usuario, video_id
 
 def log_error(miembro, paso, mensaje, modelo=""):
     """Fire-and-forget: log a Gradio pipeline error to the backend."""
@@ -189,8 +191,6 @@ def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key, miembro):
     try:
         cl = wavespeed.Client(api_key=key)
 
-        # Pass URL directly to avoid 413 on large files.
-        # For local files uploaded via Gradio, upload to WaveSpeed first.
         if str(vid_state).startswith("http"):
             vid_input = _drive_dl(vid_state)
         else:
@@ -294,8 +294,10 @@ with gr.Blocks(title="MystherAI Studio") as demo:
     s_vid_out  = gr.State("")   # v2v result video url
     s_prompt_i = gr.State("")   # prompt used in I2I step
     s_miembro  = gr.State("")   # team member name (set in tab 01)
+    s_video_id = gr.State("")   # video id from query param
+    s_estilo   = gr.State("")   # estilo selected in step 03
 
-    demo.load(on_load, None, [api_key_st, s_vid, s_miembro])
+    demo.load(on_load, None, [api_key_st, s_vid, s_miembro, s_video_id])
 
     gr.HTML(f"""
     <div style="display:flex;align-items:center;gap:14px;padding:14px 0 12px;
@@ -391,7 +393,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
             gr.HTML('<hr class="step-divider">')
             btn_to_v2v = gr.Button("→  CONTINUAR A V2V", variant="primary")
 
-            estilo_dd.change(lambda s: ESTILOS.get(s, ""), estilo_dd, prompt_i)
+            estilo_dd.change(lambda s: (ESTILOS.get(s, ""), s), estilo_dd, [prompt_i, s_estilo])
 
             btn_stylize.click(
                 do_stylize,
@@ -413,9 +415,9 @@ with gr.Blocks(title="MystherAI Studio") as demo:
 
             v2v_model = gr.Dropdown(list(V2V_MODELS.keys()), value=list(V2V_MODELS.keys())[0], label="Modelo V2V")
             prompt_v  = gr.Textbox(
-                label="Instrucción de edición (describe el estilo que quieres aplicar al video)",
+                label="Prompt de estilo (auto-cargado del paso 03 — editable)",
                 lines=2,
-                placeholder="Ej: anime style, vibrant colors, Studio Ghibli quality"
+                placeholder="Se rellena automáticamente al llegar desde el paso 03"
             )
 
             btn_v2v      = gr.Button("GENERAR VIDEO ESTILIZADO", variant="primary")
@@ -424,13 +426,8 @@ with gr.Blocks(title="MystherAI Studio") as demo:
 
             gr.HTML('<hr class="step-divider"><div class="pipe-label">Cuando estés conforme · guarda en el registro</div>')
 
-            with gr.Group():
-                gr.HTML('<div style="font-size:10px;color:#444;letter-spacing:2px;text-transform:uppercase;padding:8px 0 4px;">GUARDAR EN REGISTRO</div>')
-                with gr.Row():
-                    save_vid_id = gr.Textbox(label="ID Video Original", scale=2)
-                    save_estilo = gr.Dropdown(list(ESTILOS.keys()), label="Estilo", scale=1)
-                btn_save = gr.Button("✓  GUARDAR Y FINALIZAR", variant="primary")
-                save_st  = gr.Textbox(label="Estado", interactive=False, lines=1)
+            btn_save = gr.Button("✓  GUARDAR Y FINALIZAR", variant="primary")
+            save_st  = gr.Textbox(label="Estado", interactive=False, lines=1)
 
             btn_v2v.click(
                 do_v2v,
@@ -440,7 +437,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
 
             btn_save.click(
                 do_save,
-                [save_vid_id, s_miembro, save_estilo,
+                [s_video_id, s_miembro, s_estilo,
                  s_prompt_i, s_img_url, prompt_v, s_vid_out, s_vid],
                 save_st,
             )
@@ -451,14 +448,15 @@ with gr.Blocks(title="MystherAI Studio") as demo:
         img = gr.update(value=frame) if frame else gr.update()
         return gr.update(selected=2), img
 
-    def _go_v2v(img_url, vid):
+    def _go_v2v(img_url, vid, prompt_i):
         img = gr.update(value=img_url) if img_url else gr.update()
         txt = gr.update(value=str(vid)) if vid else gr.update()
-        return gr.update(selected=3), img, txt
+        pmt = gr.update(value=prompt_i) if prompt_i else gr.update()
+        return gr.update(selected=3), img, txt, pmt
 
     btn_to_imagen.click(_go_imagen, s_frame, [tabs, frame_disp])
     btn_to_imagen2.click(_go_imagen, s_frame, [tabs, frame_disp])
-    btn_to_v2v.click(_go_v2v, [s_img_url, s_vid], [tabs, v2v_img_show, v2v_vid_show])
+    btn_to_v2v.click(_go_v2v, [s_img_url, s_vid, s_prompt_i], [tabs, v2v_img_show, v2v_vid_show, prompt_v])
 
     # Also refresh frame_disp whenever a new frame is snapped (user may stay on tab 01)
     btn_snap.click(

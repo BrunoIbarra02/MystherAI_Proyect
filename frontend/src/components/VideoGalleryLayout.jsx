@@ -353,6 +353,25 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                       </span>
                     </div>
                     <div className="play-btn">▶</div>
+                    {/* Badge de estado censo (Estilizado / Reservado) */}
+                    {v.tipo === 'censo' && v.estado_censo && v.estado_censo !== 'Disponible' && (
+                      <div style={{
+                        position: 'absolute', top: '8px', left: '8px',
+                        fontSize: '9px', fontWeight: 800, letterSpacing: '0.8px',
+                        padding: '2px 8px', borderRadius: '4px',
+                        background: v.estado_censo === 'Estilizado'
+                          ? 'rgba(109,40,217,0.88)'
+                          : 'rgba(180,100,10,0.85)',
+                        color: 'white',
+                        backdropFilter: 'blur(4px)',
+                        border: v.estado_censo === 'Estilizado'
+                          ? '1px solid rgba(167,139,250,0.5)'
+                          : '1px solid rgba(251,191,36,0.35)',
+                        pointerEvents: 'none',
+                      }}>
+                        {v.estado_censo === 'Estilizado' ? '✓ ESTILIZADO' : '⏺ RESERVADO'}
+                      </div>
+                    )}
                     {/* Avatar del usuario que reservó/estilizó */}
                     {v.tipo === 'censo' && v.reservado_por && (
                       <div title={v.reservado_por} style={{
@@ -626,8 +645,8 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                         {/* ── PANEL DE RESERVA ── */}
                         {(() => {
                           const est = selectedVideo.estado_censo || 'Disponible';
-                          const estadoColor = { Disponible: '#22c55e', Reservado: '#f59e0b', Estilizado: '#6b7280' }[est] || '#6b7280';
-                          const gradioUrl = `${GRADIO_BASE}/?video_url=${encodeURIComponent(selectedVideo.drive_link || '')}&usuario=${encodeURIComponent(user?.display_name || '')}`;
+                          const estadoColor = { Disponible: '#22c55e', Reservado: '#d97706', Estilizado: '#8b5cf6' }[est] || '#8b5cf6';
+                          const gradioUrl = `${GRADIO_BASE}/?video_url=${encodeURIComponent(selectedVideo.drive_link || '')}&usuario=${encodeURIComponent(user?.display_name || '')}&video_id=${encodeURIComponent(selectedVideo.id || '')}`;
                           return (
                             <div style={{ gridColumn: '1/-1', marginTop: '20px', padding: '18px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid #1e1e1e', borderRadius: '10px' }}>
                               {/* Estado badge */}

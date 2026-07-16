@@ -24,13 +24,13 @@ const Resumen = () => {
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, title: '', value: '' });
 
   const userColors = [
-    '#ff4b2b',
-    'var(--silver-mid)',
-    '#bc13fe',
-    '#2ecc71',
-    '#f39c12',
-    '#3498db',
-    '#e91e63'
+    '#c0725f',
+    '#5b8def',
+    '#a16dc4',
+    '#4caf7d',
+    '#d4943a',
+    '#4a90c4',
+    '#b05878'
   ];
   const getUsuarioColor = (idx) => userColors[idx % userColors.length];
 
@@ -287,10 +287,10 @@ const Resumen = () => {
   if (error) {
     return (
       <div className="resumen-page-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
-        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', maxWidth: '500px', borderLeft: '4px solid #ff4b2b' }}>
-          <AlertTriangle size={48} color="#ff4b2b" style={{ marginBottom: '15px' }} />
+        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', maxWidth: '500px', borderLeft: '4px solid #c0725f' }}>
+          <AlertTriangle size={48} color="#c0725f" style={{ marginBottom: '15px' }} />
           <h2 style={{ color: tc, fontSize: '1.4rem', marginBottom: '10px' }}>Error de Carga</h2>
-          <p style={{ color: '#ffb3a7', fontSize: '0.95rem', marginBottom: '20px' }}>{error}</p>
+          <p style={{ color: '#dba89e', fontSize: '0.95rem', marginBottom: '20px' }}>{error}</p>
           <button className="neon-button" onClick={() => window.location.reload()}>REINTENTAR</button>
         </div>
       </div>
@@ -390,11 +390,11 @@ const Resumen = () => {
           <h3>Total Videos</h3>
           <p className="kpi-value">{kpis.totalVideos}</p>
         </div>
-        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid var(--neon-cyan)' }}>
+        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #5b8def' }}>
           <h3>Humanos</h3>
           <p className="kpi-value">{kpis.humanos}</p>
         </div>
-        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #2ecc71' }}>
+        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #4caf7d' }}>
           <h3>Animales</h3>
           <p className="kpi-value">{kpis.animales}</p>
         </div>
@@ -437,17 +437,17 @@ const Resumen = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {/* ALERTA 1: Especie Sin Clasificar (Crítico) */}
               {kpis.sinClasificar > 0 && (
-                <div className="alert-box alert-danger glass-panel" style={{ margin: 0, borderLeft: '4px solid #ff4b2b' }}>
-                  <span className="alert-icon"><AlertTriangle color="#ff4b2b" /></span>
+                <div className="alert-box alert-danger glass-panel" style={{ margin: 0, borderLeft: '4px solid #c0725f' }}>
+                  <span className="alert-icon"><AlertTriangle color="#c0725f" /></span>
                   <div className="alert-message">
                     <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                      <span className="tag red-bg" style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'uppercase' }}>CRÍTICO</span>
+                      <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'uppercase', backgroundColor: 'rgba(192,114,95,0.18)', borderColor: '#c0725f', color: '#c0725f' }}>CRÍTICO</span>
                       Etiquetas Faltantes (Sin Clasificar)
                     </h4>
                     <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
                       El <strong>{((kpis.sinClasificar / kpis.totalVideos) * 100).toFixed(1)}%</strong> de los videos ({kpis.sinClasificar} de {kpis.totalVideos} en total) no tienen especie clasificada. Para entrenar un modelo de clasificación supervisado (ej. ResNet, YOLO), es requisito que el 100% de las muestras posean una etiqueta válida.
                       <br />
-                      <strong style={{ color: '#ffb3a7' }}>Acción recomendada:</strong> Completar el etiquetado manual urgente a 'Humano' o 'Animal'.
+                      <strong style={{ color: '#dba89e' }}>Acción recomendada:</strong> Completar el etiquetado manual urgente a 'Humano' o 'Animal'.
                     </p>
                   </div>
                 </div>
@@ -455,17 +455,17 @@ const Resumen = () => {
 
               {/* ALERTA 2: Sesgo de Género por Mapa (Advertencia) */}
               {mapasSoloHombres.length > 0 && (
-                <div className="alert-box alert-warning glass-panel" style={{ margin: 0, borderLeft: '4px solid #f39c12' }}>
-                  <span className="alert-icon"><AlertTriangle color="#f39c12" /></span>
+                <div className="alert-box alert-warning glass-panel" style={{ margin: 0, borderLeft: '4px solid #d4943a' }}>
+                  <span className="alert-icon"><AlertTriangle color="#d4943a" /></span>
                   <div className="alert-message">
                     <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                      <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(243, 156, 18, 0.2)', borderColor: '#f39c12', color: '#f39c12', textTransform: 'uppercase' }}>SESGO DE GÉNERO</span>
+                      <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(212,148,58,0.15)', borderColor: '#d4943a', color: '#d4943a', textTransform: 'uppercase' }}>SESGO DE GÉNERO</span>
                       Sesgo Espacial en Distribución de Género
                     </h4>
                     <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
                       Se detectó desbalance de género en <strong>{mapasSoloHombres.length}</strong> de los {kpis.totalMapas} mapas ({((mapasSoloHombres.length / kpis.totalMapas) * 100).toFixed(1)}% del total), donde únicamente se capturaron personajes masculinos (ej. <em>{mapasSoloHombres.slice(0, 5).join(', ')}</em>...). Un modelo de IA entrenado con este sesgo podría asociar erróneamente el entorno físico con el género del personaje.
                       <br />
-                      <strong style={{ color: '#ffe5b4' }}>Acción recomendada:</strong> Añadir videos con personajes femeninos en los mapas masculinos detectados.
+                      <strong style={{ color: '#e8c993' }}>Acción recomendada:</strong> Añadir videos con personajes femeninos en los mapas masculinos detectados.
                     </p>
                   </div>
                 </div>
@@ -473,17 +473,17 @@ const Resumen = () => {
 
               {/* ALERTA 3: Sesgo de Grabador / Dispositivo (Advertencia) */}
               {(exclusivasMateo.length > 0 || exclusivasMiguel.length > 0) && (
-                <div className="alert-box alert-warning glass-panel" style={{ margin: 0, borderLeft: '4px solid #f39c12' }}>
-                  <span className="alert-icon"><AlertTriangle color="#f39c12" /></span>
+                <div className="alert-box alert-warning glass-panel" style={{ margin: 0, borderLeft: '4px solid #d4943a' }}>
+                  <span className="alert-icon"><AlertTriangle color="#d4943a" /></span>
                   <div className="alert-message">
                     <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                      <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(243, 156, 18, 0.2)', borderColor: '#f39c12', color: '#f39c12', textTransform: 'uppercase' }}>SESGO DE CAPTURA</span>
+                      <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(212,148,58,0.15)', borderColor: '#d4943a', color: '#d4943a', textTransform: 'uppercase' }}>SESGO DE CAPTURA</span>
                       Incompatibilidad de Cobertura por Grabador
                     </h4>
                     <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
                       Existe una falta de cobertura cruzada: Mateo tiene <strong>{exclusivasMateo.length}</strong> mapas exclusivos y Miguel tiene <strong>{exclusivasMiguel.length}</strong> mapas exclusivos. Para prevenir que la IA aprenda sesgos específicos del capturador (como iluminación, compresión o estilo de encuadre de cada dispositivo/operador) en lugar de las características del escenario, se requiere un dataset homogéneo.
                       <br />
-                      <strong style={{ color: '#ffe5b4' }}>Acción recomendada:</strong> Grabar videos cruzados en los mapas exclusivos (ej. Mateo en mapas de Miguel, y viceversa).
+                      <strong style={{ color: '#e8c993' }}>Acción recomendada:</strong> Grabar videos cruzados en los mapas exclusivos (ej. Mateo en mapas de Miguel, y viceversa).
                     </p>
                   </div>
                 </div>
@@ -497,17 +497,17 @@ const Resumen = () => {
                   const gapPercent = (((maxDem.value - minDem.value) / maxDem.value) * 100).toFixed(0);
 
                   return gapPercent > 20 ? (
-                    <div className="alert-box alert-info glass-panel" style={{ margin: 0, borderLeft: '4px solid var(--neon-cyan)' }}>
-                      <span className="alert-icon"><AlertTriangle color="var(--neon-cyan)" /></span>
+                    <div className="alert-box alert-info glass-panel" style={{ margin: 0, borderLeft: '4px solid #4a90c4' }}>
+                      <span className="alert-icon"><AlertTriangle color="#4a90c4" /></span>
                       <div className="alert-message">
                         <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                          <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(0, 242, 255, 0.2)', borderColor: 'var(--neon-cyan)', color: 'var(--neon-cyan)', textTransform: 'uppercase' }}>BALANCE DEMOGRÁFICO</span>
+                          <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(74,144,196,0.15)', borderColor: '#4a90c4', color: '#4a90c4', textTransform: 'uppercase' }}>BALANCE DEMOGRÁFICO</span>
                           Desbalance en Cruce Demográfico (Género x Etnia)
                         </h4>
                         <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
                           El cruce demográfico con menor representación es <strong>"{minDem.label}"</strong> ({minDem.value} videos), existiendo una brecha de <strong>{gapPercent}%</strong> respecto a la clase mayoritaria <strong>"{maxDem.label}"</strong> ({maxDem.value} videos). Esto puede inducir sesgos de reconocimiento facial y atributos en el entrenamiento del modelo.
                           <br />
-                          <strong style={{ color: '#e0f7fa' }}>Acción recomendada:</strong> Capturar más datos del grupo demográfico subrepresentado ("{minDem.label}") hasta nivelar la muestra.
+                          <strong style={{ color: '#a8c8e8' }}>Acción recomendada:</strong> Capturar más datos del grupo demográfico subrepresentado ("{minDem.label}") hasta nivelar la muestra.
                         </p>
                       </div>
                     </div>
@@ -523,17 +523,17 @@ const Resumen = () => {
                   const ratio = (mostUsed.value / (leastUsed.value || 1)).toFixed(1);
 
                   return parseFloat(ratio) > 2.0 ? (
-                    <div className="alert-box alert-info glass-panel" style={{ margin: 0, borderLeft: '4px solid var(--neon-cyan)' }}>
-                      <span className="alert-icon"><AlertTriangle color="var(--neon-cyan)" /></span>
+                    <div className="alert-box alert-info glass-panel" style={{ margin: 0, borderLeft: '4px solid #4a90c4' }}>
+                      <span className="alert-icon"><AlertTriangle color="#4a90c4" /></span>
                       <div className="alert-message">
                         <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                          <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(0, 242, 255, 0.2)', borderColor: 'var(--neon-cyan)', color: 'var(--neon-cyan)', textTransform: 'uppercase' }}>DESBALANCE TÉCNICO</span>
+                          <span className="tag" style={{ fontSize: '0.65rem', padding: '2px 6px', backgroundColor: 'rgba(74,144,196,0.15)', borderColor: '#4a90c4', color: '#4a90c4', textTransform: 'uppercase' }}>DESBALANCE TÉCNICO</span>
                           Desproporción en Tipo de Cámara (Perspectiva)
                         </h4>
                         <p style={{ marginTop: '8px', fontSize: '0.9rem', lineHeight: '1.5' }}>
                           El tipo de cámara <strong>"{mostUsed.label}"</strong> ({mostUsed.value} videos) es <strong>{ratio} veces</strong> más frecuente que la cámara <strong>"{leastUsed.label}"</strong> ({leastUsed.value} videos). La variabilidad de perspectiva es crítica para entrenar clasificadores de acción independientes del ángulo de cámara.
                           <br />
-                          <strong style={{ color: '#e0f7fa' }}>Acción recomendada:</strong> Incrementar tomas de video usando el tipo de cámara "{leastUsed.label}" para diversificar los ángulos en el entrenamiento.
+                          <strong style={{ color: '#a8c8e8' }}>Acción recomendada:</strong> Incrementar tomas de video usando el tipo de cámara "{leastUsed.label}" para diversificar los ángulos en el entrenamiento.
                         </p>
                       </div>
                     </div>
@@ -697,7 +697,7 @@ const Resumen = () => {
                         {m.human > 0 && (
                           <div
                             className="bar-rect"
-                            style={{ width: `${pctHuman}%`, height: '100%', backgroundColor: 'var(--neon-cyan)' }}
+                            style={{ width: `${pctHuman}%`, height: '100%', backgroundColor: '#5b8def' }}
                             onMouseMove={(e) => showChartTooltip(e, `${m.name} - Humanos`, `${m.human} videos`)}
                             onMouseLeave={hideChartTooltip}
                           />
@@ -705,7 +705,7 @@ const Resumen = () => {
                         {m.animal > 0 && (
                           <div
                             className="bar-rect"
-                            style={{ width: `${pctAnimal}%`, height: '100%', backgroundColor: '#2ecc71' }}
+                            style={{ width: `${pctAnimal}%`, height: '100%', backgroundColor: '#4caf7d' }}
                             onMouseMove={(e) => showChartTooltip(e, `${m.name} - Animales`, `${m.animal} videos`)}
                             onMouseLeave={hideChartTooltip}
                           />
@@ -713,7 +713,7 @@ const Resumen = () => {
                         {m.unclassified > 0 && (
                           <div
                             className="bar-rect"
-                            style={{ width: `${pctUnclass}%`, height: '100%', backgroundColor: '#ff4b2b' }}
+                            style={{ width: `${pctUnclass}%`, height: '100%', backgroundColor: '#c0725f' }}
                             onMouseMove={(e) => showChartTooltip(e, `${m.name} - Sin Clasificar`, `${m.unclassified} videos`)}
                             onMouseLeave={hideChartTooltip}
                           />
@@ -728,9 +728,9 @@ const Resumen = () => {
               </div>
 
               <div className="chart-legends" style={{ marginTop: '20px' }}>
-                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: 'var(--neon-cyan)' }} /> Humano</span>
-                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#2ecc71' }} /> Animal</span>
-                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#ff4b2b' }} /> Sin Clasificar</span>
+                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#5b8def' }} /> Humano</span>
+                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#4caf7d' }} /> Animal</span>
+                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#c0725f' }} /> Sin Clasificar</span>
               </div>
             </div>
           </div>
@@ -896,8 +896,8 @@ const Resumen = () => {
       {/* SECCIÓN 4: GÉNERO Y DIVERSIDAD */}
       {activeTab === 'diversidad' && (
         <section className="resumen-section">
-          <div className="alert-box alert-danger glass-panel" style={{ borderLeft: '4px solid #f39c12' }}>
-            <span className="alert-icon"><AlertTriangle color="#f39c12" /></span>
+          <div className="alert-box alert-warning glass-panel" style={{ borderLeft: '4px solid #d4943a' }}>
+            <span className="alert-icon"><AlertTriangle color="#d4943a" /></span>
             <div className="alert-message">
               <h4>Desbalance de Género en Mapas</h4>
               <p>
@@ -1004,8 +1004,8 @@ const Resumen = () => {
                     <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8rem' }}>
                       <div style={{ width: '100px', textAlign: 'right', color: 'var(--text-dim)' }}>{m.name}</div>
                       <div style={{ flexGrow: 1, height: '8px', borderRadius: '4px', display: 'flex', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                        <div style={{ width: `${(hombresCount / totalHumans) * 100}%`, backgroundColor: 'var(--neon-cyan)' }} />
-                        <div style={{ width: `${(mujeresCount / totalHumans) * 100}%`, backgroundColor: 'var(--neon-purple)' }} />
+                        <div style={{ width: `${(hombresCount / totalHumans) * 100}%`, backgroundColor: '#5b8def' }} />
+                        <div style={{ width: `${(mujeresCount / totalHumans) * 100}%`, backgroundColor: '#a16dc4' }} />
                       </div>
                       <div style={{ width: '80px', color: tc }}>H:{hombresCount} | M:{mujeresCount}</div>
                     </div>
@@ -1014,8 +1014,8 @@ const Resumen = () => {
               </div>
 
               <div className="chart-legends">
-                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: 'var(--neon-cyan)' }} /> Hombres</span>
-                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: 'var(--neon-purple)' }} /> Mujeres</span>
+                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#5b8def' }} /> Hombres</span>
+                <span className="legend-item"><span className="legend-color" style={{ backgroundColor: '#a16dc4' }} /> Mujeres</span>
               </div>
             </div>
           </div>
@@ -1080,7 +1080,7 @@ const Resumen = () => {
                         style={{
                           width: '100%',
                           height: `${percentHeight}px`,
-                          backgroundColor: '#9c27b0',
+                          backgroundColor: '#7c6aa8',
                           borderRadius: '4px 4px 0 0'
                         }}
                         onMouseMove={(e) => showChartTooltip(e, `${d.label} de duración`, `${d.value} videos`)}
@@ -1130,7 +1130,7 @@ const Resumen = () => {
                       />
                       <div>
                         <h4 className="action-title">{item.title}</h4>
-                        <span style={{ fontSize: '0.7rem', color: '#ff4b2b', fontWeight: 'bold' }}>{item.cat}</span>
+                        <span style={{ fontSize: '0.7rem', color: '#c0725f', fontWeight: 'bold' }}>{item.cat}</span>
                       </div>
                     </div>
                     <p className="action-desc">{item.desc}</p>
@@ -1169,7 +1169,7 @@ const Resumen = () => {
                       />
                       <div>
                         <h4 className="action-title">{item.title}</h4>
-                        <span style={{ fontSize: '0.7rem', color: '#f39c12', fontWeight: 'bold' }}>{item.cat}</span>
+                        <span style={{ fontSize: '0.7rem', color: '#d4943a', fontWeight: 'bold' }}>{item.cat}</span>
                       </div>
                     </div>
                     <p className="action-desc">{item.desc}</p>
@@ -1247,7 +1247,7 @@ const Resumen = () => {
                       />
                       <div>
                         <h4 className="action-title">{item.title}</h4>
-                        <span style={{ fontSize: '0.7rem', color: '#2ecc71', fontWeight: 'bold' }}>{item.cat}</span>
+                        <span style={{ fontSize: '0.7rem', color: '#4caf7d', fontWeight: 'bold' }}>{item.cat}</span>
                       </div>
                     </div>
                     <p className="action-desc">{item.desc}</p>

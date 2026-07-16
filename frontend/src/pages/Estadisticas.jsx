@@ -16,16 +16,16 @@ import api from '../utils/api';
    El objeto definitivo se construye en tiempo de ejecución desde rawData.
 ─────────────────────────────────────────────────────────────── */
 const PALETA_ESTILOS_BASE = [
-  '#00f2ff', // 0 Anime  (cian neón)
-  '#f39c12', // 1 Cartoon (naranja)
-  '#e74c3c', // 2 Lego   (rojo)
-  '#bc13fe', // 3 Ciberpunk (violeta)
-  '#2ecc71', // 4 extra
-  '#3498db', // 5 extra
-  '#e91e63', // 6 extra
-  '#9b59b6', // 7 extra
-  '#1abc9c', // 8 extra
-  '#ff5722', // 9 extra
+  '#5b8def', // 0 Anime  (azul acero)
+  '#d4943a', // 1 Cartoon (ámbar)
+  '#c0725f', // 2 Lego   (ladrillo)
+  '#8b5cf6', // 3 Ciberpunk (violeta)
+  '#4caf7d', // 4 extra
+  '#4a90c4', // 5 extra
+  '#b05878', // 6 extra
+  '#7c6aa8', // 7 extra
+  '#3a9e8f', // 8 extra
+  '#c07650', // 9 extra
 ];
 
 /** Devuelve el color de un estilo desde los datos del backend (rawData.coloresEstilo).
@@ -37,14 +37,14 @@ const colorEstilo = (est, coloresEstiloMap, estilosValidos) => {
 };
 
 const COLORES_MIEMBRO = [
-  '#ff4b2b', '#00f2ff', '#bc13fe', '#2ecc71',
-  '#f39c12', '#3498db', '#e91e63',
+  '#c0725f', '#5b8def', '#8b5cf6', '#4caf7d',
+  '#d4943a', '#4a90c4', '#b05878',
 ];
 
 const SEVERIDAD_COLOR = {
-  critica: '#ff4b2b',
-  advertencia: '#f39c12',
-  informativa: '#2ecc71',
+  critica: '#c0725f',
+  advertencia: '#d4943a',
+  informativa: '#4caf7d',
 };
 const SEVERIDAD_ICON = {
   critica: '🔴',
@@ -106,20 +106,20 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
     <section className="resumen-section">
       {/* ── KPIs de Cobertura ── */}
       <div style={{ display: 'flex', gap: '14px', marginBottom: '22px', flexWrap: 'wrap' }}>
-        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #bc13fe', flex: 1, minWidth: '140px' }}>
+        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #8b5cf6', flex: 1, minWidth: '140px' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>Registros con metadata</h3>
-          <p className="kpi-value" style={{ color: '#bc13fe' }}>{conMeta}</p>
+          <p className="kpi-value" style={{ color: '#8b5cf6' }}>{conMeta}</p>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>{pctCob}% de {totalReg} totales</span>
         </div>
-        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #f39c12', flex: 1, minWidth: '140px' }}>
+        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #d4943a', flex: 1, minWidth: '140px' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>Sin metadata</h3>
-          <p className="kpi-value" style={{ color: '#f39c12' }}>{sinMeta}</p>
+          <p className="kpi-value" style={{ color: '#d4943a' }}>{sinMeta}</p>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>Pendientes de extracción</span>
         </div>
-        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #2ecc71', flex: 1, minWidth: '200px' }}>
+        <div className="kpi-card glass-panel" style={{ borderLeft: '4px solid #4caf7d', flex: 1, minWidth: '200px' }}>
           <h3 style={{ margin: '0 0 6px', fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>Cobertura de Extracción</h3>
           <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '6px', height: '10px', overflow: 'hidden', marginBottom: '4px' }}>
-            <div style={{ width: `${pctCob}%`, height: '100%', background: pctCob >= 80 ? '#2ecc71' : pctCob >= 40 ? '#f39c12' : '#ff4b2b', borderRadius: '5px', transition: 'width 0.8s ease' }} />
+            <div style={{ width: `${pctCob}%`, height: '100%', background: pctCob >= 80 ? '#4caf7d' : pctCob >= 40 ? '#d4943a' : '#c0725f', borderRadius: '5px', transition: 'width 0.8s ease' }} />
           </div>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
             {pctCob < 100 ? `Ve a Sync & Meta para extraer los ${sinMeta} restantes` : '✅ Cobertura completa'}
@@ -129,7 +129,7 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
 
       <div className="charts-row">
         {/* ── FPS Promedio por Estilo ── */}
-        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #00f2ff' }}>
+        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #5b8def' }}>
           <h3 className="chart-title">FPS Promedio por Estilo</h3>
           <p className="chart-subtitle">Velocidad de cuadros del video estilizado.</p>
           {fpsList.length === 0 ? (
@@ -152,7 +152,7 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
         </div>
 
         {/* ── Tamaño Promedio por Estilo ── */}
-        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #f39c12' }}>
+        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #d4943a' }}>
           <h3 className="chart-title">Tamaño Promedio del Video Estilizado</h3>
           <p className="chart-subtitle">Megabytes promedio por estilo visual.</p>
           {sizList.length === 0 ? (
@@ -175,7 +175,7 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
 
       <div className="charts-row">
         {/* ── Distribución de FPS ── */}
-        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #bc13fe' }}>
+        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #8b5cf6' }}>
           <h3 className="chart-title">Distribución Global de FPS</h3>
           <p className="chart-subtitle">Cuántos videos tienen cada valor de FPS.</p>
           {fpsDist.length === 0 ? (
@@ -185,7 +185,7 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
               <div style={{ width: '50px', fontSize: '0.8rem', color: tc, textAlign: 'right' }}>{d.fps} fps</div>
               <div style={{ flexGrow: 1, background: bgBar, height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div
-                  style={{ width: `${(d.cantidad / maxFpsCnt) * 100}%`, height: '100%', background: 'linear-gradient(to right, #bc13fe, #00f2ff)', borderRadius: '5px', transition: 'width 0.6s ease' }}
+                  style={{ width: `${(d.cantidad / maxFpsCnt) * 100}%`, height: '100%', background: 'linear-gradient(to right, #8b5cf6, #5b8def)', borderRadius: '5px', transition: 'width 0.6s ease' }}
                   onMouseMove={e => showTip(e, `${d.fps} fps`, `${d.cantidad} videos`)}
                   onMouseLeave={hideTip}
                 />
@@ -196,13 +196,13 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
         </div>
 
         {/* ── Distribución de Duración Original ── */}
-        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #2ecc71' }}>
+        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #4caf7d' }}>
           <h3 className="chart-title">Distribución de Duración (Original)</h3>
           <p className="chart-subtitle">Rangos de duración del video original grabado.</p>
           {durDist.every(d => d.cantidad === 0) ? (
             <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '30px 0' }}>Sin datos de duración</div>
           ) : durDist.map((d, i) => {
-            const colors = ['#2ecc71', '#00f2ff', '#f39c12', '#ff4b2b'];
+            const colors = ['#4caf7d', '#5b8def', '#d4943a', '#c0725f'];
             return (
               <div key={d.rango} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                 <div style={{ width: '60px', fontSize: '0.8rem', color: tc, textAlign: 'right' }}>{d.rango}</div>
@@ -222,7 +222,7 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
 
       {/* ── Resolución + Retención ── */}
       <div className="charts-row">
-        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #e74c3c' }}>
+        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #c0725f' }}>
           <h3 className="chart-title">Resolución Más Común por Estilo</h3>
           <p className="chart-subtitle">Resolución dominante del video estilizado por estilo visual.</p>
           {resList.length === 0 ? (
@@ -249,7 +249,7 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
           )}
         </div>
 
-        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #f39c12' }}>
+        <div className="chart-card glass-panel" style={{ borderTop: '2px solid #d4943a' }}>
           <h3 className="chart-title">Retención de Duración por Estilo</h3>
           <p className="chart-subtitle">% de duración del estilizado vs original. Ideal &gt;80%.</p>
           {duracionPorEstilo.every(d => d.conDatos === 0) ? (
@@ -258,7 +258,7 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
             </div>
           ) : duracionPorEstilo.filter(d => d.conDatos > 0).map(d => {
             const pct = d.pctRetencion || 0;
-            const barColor = pct >= 90 ? '#2ecc71' : pct >= 80 ? '#f39c12' : '#ff4b2b';
+            const barColor = pct >= 90 ? '#4caf7d' : pct >= 80 ? '#d4943a' : '#c0725f';
             return (
               <div key={d.estilo} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                 <div style={{ width: '90px', fontSize: '0.8rem', color: tc, textAlign: 'right' }}>{d.estilo}</div>
@@ -279,14 +279,14 @@ function MetadatosTab({ metadataStats = {}, duracionPorEstilo = [], showTip, hid
       {/* ── Aviso si hay poca cobertura ── */}
       {pctCob < 50 && (
         <div style={{ marginTop: '16px', padding: '14px 18px', background: 'rgba(243,156,18,0.08)', borderRadius: '10px', border: '1px solid rgba(243,156,18,0.3)', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <span style={{ color: '#f39c12', fontSize: '1.1rem', flexShrink: 0 }}>⚠️</span>
+          <span style={{ color: '#d4943a', fontSize: '1.1rem', flexShrink: 0 }}>⚠️</span>
           <div>
-            <div style={{ fontWeight: 'bold', color: '#f39c12', marginBottom: '4px' }}>
+            <div style={{ fontWeight: 'bold', color: '#d4943a', marginBottom: '4px' }}>
               Baja cobertura de metadatos ({pctCob}%)
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
               Solo {conMeta} de {totalReg} registros tienen metadatos extraídos.
-              Ve a <strong style={{ color: '#00f2ff' }}>Sync &amp; Meta</strong> y ejecuta la extracción,
+              Ve a <strong style={{ color: '#5b8def' }}>Sync &amp; Meta</strong> y ejecuta la extracción,
               o corre <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 5px', borderRadius: '3px' }}>python manage.py extract_metadata</code> para procesarlos todos.
             </div>
           </div>
@@ -427,16 +427,16 @@ const Estadisticas = () => {
     estilosData.forEach(e => e.color = cEst(e.label));
 
     const estadosDonut = [
-      { label: 'Aceptado', value: kpis.totalAceptados, color: '#2ecc71' },
-      { label: 'Rechazado', value: kpis.totalRechazados, color: '#ff4b2b' },
-      { label: 'Duda', value: kpis.totalDuda, color: '#f39c12' },
-      { label: 'Sin revisar', value: kpis.totalSinRevisar, color: '#607d8b' },
+      { label: 'Aceptado', value: kpis.totalAceptados, color: '#4caf7d' },
+      { label: 'Rechazado', value: kpis.totalRechazados, color: '#c0725f' },
+      { label: 'Duda', value: kpis.totalDuda, color: '#d4943a' },
+      { label: 'Sin revisar', value: kpis.totalSinRevisar, color: '#7a8fa6' },
     ].map(s => ({ ...s, percent: round((s.value / total) * 100, 1) }));
 
     // Productores principales — dinámico desde los datos reales del Excel
     const coloresPorProductor = rawData?.coloresPorProductor || {};
     const productoresUnicos = rawData?.productoresUnicos || [];
-    const PALETA_PROD = ['#ff4b2b', '#00f2ff', '#bc13fe', '#2ecc71', '#f39c12', '#3498db', '#e91e63', '#9b59b6'];
+    const PALETA_PROD = ['#c0725f', '#5b8def', '#8b5cf6', '#4caf7d', '#d4943a', '#4a90c4', '#b05878', '#7c6aa8'];
     const productores = productoresUnicos.length > 0
       ? productoresUnicos.map((p, i) => {
         const cnt = regs.filter(r => r.productor === p).length;
@@ -649,7 +649,7 @@ Por favor coordinar con el productor asignado.`;
   if (loading) return (
     <div className="resumen-page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
       <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', maxWidth: '400px' }}>
-        <div style={{ margin: '0 auto 20px', width: '50px', height: '50px', borderRadius: '50%', border: '3px solid rgba(188,19,254,0.2)', borderTopColor: '#bc13fe', animation: 'spin 1s linear infinite' }} />
+        <div style={{ margin: '0 auto 20px', width: '50px', height: '50px', borderRadius: '50%', border: '3px solid rgba(139,92,246,0.2)', borderTopColor: '#8b5cf6', animation: 'spin 1s linear infinite' }} />
         <h2 style={{ color: tc, fontSize: '1.2rem', marginBottom: '10px' }}>Cargando estadísticas...</h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Analizando Excel y calculando métricas de balance.</p>
       </div>
@@ -659,10 +659,10 @@ Por favor coordinar con el productor asignado.`;
 
   if (error) return (
     <div className="resumen-page-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
-      <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', maxWidth: '500px', borderLeft: '4px solid #bc13fe' }}>
-        <AlertTriangle size={48} color="#bc13fe" style={{ marginBottom: '15px' }} />
+      <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', maxWidth: '500px', borderLeft: '4px solid #8b5cf6' }}>
+        <AlertTriangle size={48} color="#8b5cf6" style={{ marginBottom: '15px' }} />
         <h2 style={{ color: tc, fontSize: '1.4rem', marginBottom: '10px' }}>Error de Carga</h2>
-        <p style={{ color: '#ffb3a7', fontSize: '0.95rem', marginBottom: '20px' }}>{error}</p>
+        <p style={{ color: '#dba89e', fontSize: '0.95rem', marginBottom: '20px' }}>{error}</p>
         <button className="neon-button" onClick={fetchData}>REINTENTAR</button>
       </div>
     </div>
@@ -679,7 +679,7 @@ Por favor coordinar con el productor asignado.`;
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
         <div style={{ width: '110px', fontSize: '0.82rem', color: tc, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
         <div style={{ flexGrow: 1, backgroundColor: bgBar, height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ width: `${pct}%`, height: '100%', background: color || `linear-gradient(to right, #00f2ff, #bc13fe)`, borderRadius: '5px', transition: 'width 0.6s ease' }}
+          <div style={{ width: `${pct}%`, height: '100%', background: color || `linear-gradient(to right, #5b8def, #8b5cf6)`, borderRadius: '5px', transition: 'width 0.6s ease' }}
             onMouseMove={e => showTip(e, label, extra || `${value}`)} onMouseLeave={hideTip} />
         </div>
         <div style={{ width: '35px', fontSize: '0.82rem', color: 'var(--text-dim)', fontWeight: 'bold', textAlign: 'right' }}>{value}</div>
@@ -754,7 +754,7 @@ Por favor coordinar con el productor asignado.`;
 
   // Caja de alerta individual
   const AlertaBox = ({ alerta, mostrarBoton = false }) => {
-    const color = SEVERIDAD_COLOR[alerta.tipo] || '#f39c12';
+    const color = SEVERIDAD_COLOR[alerta.tipo] || '#d4943a';
     return (
       <div className="glass-panel" style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '14px 18px', borderLeft: `4px solid ${color}`, marginBottom: '12px' }}>
         <AlertTriangle size={18} color={color} style={{ flexShrink: 0, marginTop: '2px' }} />
@@ -778,7 +778,7 @@ Por favor coordinar con el productor asignado.`;
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
       {opciones.map(op => {
         const activo = filtros[campo].includes(op);
-        const color = colorFn ? colorFn(op) : '#bc13fe';
+        const color = colorFn ? colorFn(op) : '#8b5cf6';
         return (
           <button key={op} onClick={() => toggleFiltro(campo, op)} style={{
             padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', cursor: 'pointer',
@@ -797,14 +797,14 @@ Por favor coordinar con el productor asignado.`;
      BARRA DE FILTROS (colapsable)
   ─────────────────────────────────────────────────────────────────── */
   const BarraFiltros = () => (
-    <div className="glass-panel" style={{ marginBottom: '20px', padding: '16px 20px', border: filtrosActivos > 0 ? '1px solid rgba(188,19,254,0.3)' : '1px solid var(--glass-border)' }}>
+    <div className="glass-panel" style={{ marginBottom: '20px', padding: '16px 20px', border: filtrosActivos > 0 ? '1px solid rgba(139,92,246,0.3)' : '1px solid var(--glass-border)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setFiltrosOpen(v => !v)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Filter size={16} color={filtrosActivos > 0 ? '#bc13fe' : 'var(--text-dim)'} />
-          <span style={{ fontSize: '0.85rem', color: filtrosActivos > 0 ? '#bc13fe' : 'var(--text-dim)', fontWeight: filtrosActivos > 0 ? 'bold' : 'normal' }}>
+          <Filter size={16} color={filtrosActivos > 0 ? '#8b5cf6' : 'var(--text-dim)'} />
+          <span style={{ fontSize: '0.85rem', color: filtrosActivos > 0 ? '#8b5cf6' : 'var(--text-dim)', fontWeight: filtrosActivos > 0 ? 'bold' : 'normal' }}>
             Filtros del Dataset
             {filtrosActivos > 0 && (
-              <span style={{ marginLeft: '8px', backgroundColor: '#bc13fe', color: tc, borderRadius: '50%', fontSize: '0.65rem', width: '18px', height: '18px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{filtrosActivos}</span>
+              <span style={{ marginLeft: '8px', backgroundColor: '#8b5cf6', color: tc, borderRadius: '50%', fontSize: '0.65rem', width: '18px', height: '18px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{filtrosActivos}</span>
             )}
           </span>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
@@ -813,7 +813,7 @@ Por favor coordinar con el productor asignado.`;
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {filtrosActivos > 0 && (
-            <button onClick={e => { e.stopPropagation(); limpiarFiltros(); }} style={{ fontSize: '0.72rem', color: '#ff4b2b', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
+            <button onClick={e => { e.stopPropagation(); limpiarFiltros(); }} style={{ fontSize: '0.72rem', color: '#c0725f', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>
               <X size={12} style={{ verticalAlign: 'middle', marginRight: '3px' }} />Limpiar
             </button>
           )}
@@ -833,7 +833,7 @@ Por favor coordinar con el productor asignado.`;
           <div>
             <label style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>Productor Principal</label>
             <BotonesMulti campo="productores" opciones={opcionesFiltros.productores}
-              colorFn={p => (rawData?.coloresPorProductor || {})[p] || '#bc13fe'} />
+              colorFn={p => (rawData?.coloresPorProductor || {})[p] || '#8b5cf6'} />
           </div>
           {/* Sub-productor */}
           <div>
@@ -843,7 +843,7 @@ Por favor coordinar con el productor asignado.`;
           {/* Estado */}
           <div>
             <label style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>Estado</label>
-            <BotonesMulti campo="estados" opciones={opcionesFiltros.estados} colorFn={e => ({ 'Aceptado': '#2ecc71', 'Rechazado': '#ff4b2b', 'Duda': '#f39c12', 'Sin revisar': '#607d8b' }[e] || '#bc13fe')} />
+            <BotonesMulti campo="estados" opciones={opcionesFiltros.estados} colorFn={e => ({ 'Aceptado': '#4caf7d', 'Rechazado': '#c0725f', 'Duda': '#d4943a', 'Sin revisar': '#7a8fa6' }[e] || '#8b5cf6')} />
           </div>
           {/* Mapa */}
           <div>
@@ -854,7 +854,7 @@ Por favor coordinar con el productor asignado.`;
           {/* Especie */}
           <div>
             <label style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px' }}>Especie / Sujeto</label>
-            <BotonesMulti campo="especies" opciones={opcionesFiltros.especies} colorFn={e => ({ 'Humano': '#00f2ff', 'Animal': '#2ecc71', 'Entorno': '#9b59b6' }[e] || '#bc13fe')} />
+            <BotonesMulti campo="especies" opciones={opcionesFiltros.especies} colorFn={e => ({ 'Humano': '#5b8def', 'Animal': '#4caf7d', 'Entorno': '#7c6aa8' }[e] || '#8b5cf6')} />
           </div>
           {/* Tiene arreglo */}
           <div>
@@ -865,9 +865,9 @@ Por favor coordinar con el productor asignado.`;
                 return (
                   <button key={l} onClick={() => setFiltros(prev => ({ ...prev, tieneArreglo: v }))} style={{
                     padding: '3px 12px', borderRadius: '20px', fontSize: '0.75rem', cursor: 'pointer',
-                    border: `1px solid ${activo ? '#00f2ff' : 'var(--glass-border)'}`,
-                    background: activo ? 'rgba(0,242,255,0.15)' : 'var(--glass-bg)',
-                    color: activo ? '#00f2ff' : 'var(--text-dim)', fontWeight: activo ? 'bold' : 'normal',
+                    border: `1px solid ${activo ? '#5b8def' : 'var(--glass-border)'}`,
+                    background: activo ? 'rgba(91,141,239,0.15)' : 'var(--glass-bg)',
+                    color: activo ? '#5b8def' : 'var(--text-dim)', fontWeight: activo ? 'bold' : 'normal',
                   }}>{l}</button>
                 );
               })}
@@ -890,9 +890,9 @@ Por favor coordinar con el productor asignado.`;
           position: 'fixed', bottom: '30px', left: '20px', zIndex: 1000,
           width: '52px', height: '52px', borderRadius: '50%',
           background: alertasCrit.length > 0
-            ? 'linear-gradient(135deg, #ff4b2b, #ff9800)'
-            : 'linear-gradient(135deg, #f39c12, #e67e22)',
-          border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(255,75,43,0.5)',
+            ? 'linear-gradient(135deg, #c0725f, #ff9800)'
+            : 'linear-gradient(135deg, #d4943a, #e67e22)',
+          border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(192,114,95,0.5)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
@@ -900,7 +900,7 @@ Por favor coordinar con el productor asignado.`;
         {alertas.length > 0 && (
           <span style={{
             position: 'absolute', top: '-4px', right: '-4px',
-            backgroundColor: alertasCrit.length > 0 ? '#ff4b2b' : '#f39c12',
+            backgroundColor: alertasCrit.length > 0 ? '#c0725f' : '#d4943a',
             /* El badge siempre es de color sólido, texto blanco para contraste */
             color: 'white', borderRadius: '50%', fontSize: '0.65rem',
             width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -921,7 +921,7 @@ Por favor coordinar con el productor asignado.`;
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderRight: theme === 'dark'
-            ? '1px solid rgba(188,19,254,0.2)'
+            ? '1px solid rgba(139,92,246,0.2)'
             : '1px solid rgba(0,0,0,0.10)',
           zIndex: 1001,
           display: 'flex', flexDirection: 'column', overflowY: 'auto',
@@ -935,9 +935,9 @@ Por favor coordinar con el productor asignado.`;
             <div>
               <h3 style={{ margin: 0, color: tc, fontSize: '1rem' }}>🔔 Alertas Activas</h3>
               <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                {alertasCrit.length > 0 && <span style={{ color: '#ff4b2b' }}>{alertasCrit.length} crítica(s) </span>}
-                {alertasAdvert.length > 0 && <span style={{ color: '#f39c12' }}>{alertasAdvert.length} advert. </span>}
-                {alertasInfo.length > 0 && <span style={{ color: '#2ecc71' }}>{alertasInfo.length} inform. </span>}
+                {alertasCrit.length > 0 && <span style={{ color: '#c0725f' }}>{alertasCrit.length} crítica(s) </span>}
+                {alertasAdvert.length > 0 && <span style={{ color: '#d4943a' }}>{alertasAdvert.length} advert. </span>}
+                {alertasInfo.length > 0 && <span style={{ color: '#4caf7d' }}>{alertasInfo.length} inform. </span>}
               </p>
             </div>
             <button onClick={() => setAlertasSidebarOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)' }}>
@@ -963,19 +963,19 @@ Por favor coordinar con el productor asignado.`;
           <div style={{ padding: '16px', flex: 1 }}>
             {alertasCrit.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <h4 style={{ margin: '0 0 10px', color: '#ff4b2b', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>🔴 Críticas</h4>
+                <h4 style={{ margin: '0 0 10px', color: '#c0725f', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>🔴 Críticas</h4>
                 {alertasCrit.map((a, i) => <AlertaBox key={i} alerta={a} mostrarBoton />)}
               </div>
             )}
             {alertasAdvert.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <h4 style={{ margin: '0 0 10px', color: '#f39c12', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>🟡 Advertencias</h4>
+                <h4 style={{ margin: '0 0 10px', color: '#d4943a', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>🟡 Advertencias</h4>
                 {alertasAdvert.map((a, i) => <AlertaBox key={i} alerta={a} mostrarBoton />)}
               </div>
             )}
             {alertasInfo.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <h4 style={{ margin: '0 0 10px', color: '#2ecc71', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>🟢 Informativas</h4>
+                <h4 style={{ margin: '0 0 10px', color: '#4caf7d', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>🟢 Informativas</h4>
                 {alertasInfo.map((a, i) => <AlertaBox key={i} alerta={a} />)}
               </div>
             )}
@@ -1001,7 +1001,7 @@ Por favor coordinar con el productor asignado.`;
     if (!modalSolicitud) return null;
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)' }}>
-        <div className="glass-panel" style={{ width: '500px', maxWidth: '90vw', padding: '28px', borderTop: '3px solid #bc13fe' }}>
+        <div className="glass-panel" style={{ width: '500px', maxWidth: '90vw', padding: '28px', borderTop: '3px solid #8b5cf6' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ margin: 0, color: tc, fontSize: '1rem' }}>📋 {modalSolicitud.titulo}</h3>
             <button onClick={() => setModalSolicitud(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)' }}>
@@ -1010,10 +1010,10 @@ Por favor coordinar con el productor asignado.`;
           </div>
           <textarea readOnly value={modalSolicitud.texto} style={{ width: '100%', height: '200px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: tcSub, fontSize: '0.82rem', padding: '12px', resize: 'vertical', fontFamily: 'monospace', boxSizing: 'border-box' }} />
           <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-            <button onClick={copiarSolicitud} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid rgba(0,242,255,0.3)', background: 'rgba(0,242,255,0.1)', color: '#00f2ff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem' }}>
+            <button onClick={copiarSolicitud} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid rgba(91,141,239,0.3)', background: 'rgba(91,141,239,0.1)', color: '#5b8def', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem' }}>
               <Copy size={14} /> Copiar texto
             </button>
-            <button onClick={descargarSolicitud} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid rgba(188,19,254,0.3)', background: 'rgba(188,19,254,0.1)', color: '#bc13fe', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem' }}>
+            <button onClick={descargarSolicitud} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem' }}>
               <Download size={14} /> Descargar .txt
             </button>
           </div>
@@ -1098,12 +1098,12 @@ Por favor coordinar con el productor asignado.`;
           <p style={{ color: 'var(--text-dim)', fontSize: '1rem', letterSpacing: '1px' }}>
             Estilizado: {rawData?.estilosValidos?.join(' / ') || '...'} • {rawData?.kpis?.totalEntradas} entradas totales
             {filtrosActivos > 0 && (
-              <span style={{ marginLeft: '12px', backgroundColor: 'rgba(188,19,254,0.15)', color: '#bc13fe', padding: '2px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 'bold' }}>
+              <span style={{ marginLeft: '12px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#8b5cf6', padding: '2px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 'bold' }}>
                 🔍 {filtros.estilos.join(', ') || ''} — {registrosFiltrados.length} filtrados
               </span>
             )}
             {alertasCrit.length > 0 && (
-              <span style={{ marginLeft: '12px', backgroundColor: 'rgba(255,75,43,0.15)', color: '#ff4b2b', padding: '2px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 'bold' }}>
+              <span style={{ marginLeft: '12px', backgroundColor: 'rgba(192,114,95,0.15)', color: '#c0725f', padding: '2px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 'bold' }}>
                 ⚠ {alertasCrit.length} crítica{alertasCrit.length > 1 ? 's' : ''}
               </span>
             )}
@@ -1112,12 +1112,12 @@ Por favor coordinar con el productor asignado.`;
 
         {/* KPIs reactivos */}
         <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-          <KpiCard titulo="Entradas (filtro)" valor={kpis.totalEntradas} color="#bc13fe" icon={Layers} />
-          <KpiCard titulo="Aceptados" valor={kpis.totalAceptados} color="#2ecc71" icon={Shield} subtitulo={`${kpis.tasaAceptacion}% del total`} />
-          <KpiCard titulo="Rechazados" valor={kpis.totalRechazados} color="#ff4b2b" icon={AlertTriangle} subtitulo={`${kpis.tasaRechazados}% del total`} />
-          <KpiCard titulo="En Duda" valor={kpis.totalDuda} color="#f39c12" icon={Activity} subtitulo={`${kpis.tasaDuda}% del total`} />
+          <KpiCard titulo="Entradas (filtro)" valor={kpis.totalEntradas} color="#8b5cf6" icon={Layers} />
+          <KpiCard titulo="Aceptados" valor={kpis.totalAceptados} color="#4caf7d" icon={Shield} subtitulo={`${kpis.tasaAceptacion}% del total`} />
+          <KpiCard titulo="Rechazados" valor={kpis.totalRechazados} color="#c0725f" icon={AlertTriangle} subtitulo={`${kpis.tasaRechazados}% del total`} />
+          <KpiCard titulo="En Duda" valor={kpis.totalDuda} color="#d4943a" icon={Activity} subtitulo={`${kpis.tasaDuda}% del total`} />
           <KpiCard titulo="Sin Revisar" valor={kpis.totalSinRevisar} color="#607d8b" icon={Sliders} subtitulo={`${kpis.tasaSinRevisar}% del total`} />
-          <KpiCard titulo="Con Arreglo" valor={kpis.totalConArreglo} color="#00f2ff" icon={CheckSquare} subtitulo={`${kpis.tasaConArreglo}% del total`} />
+          <KpiCard titulo="Con Arreglo" valor={kpis.totalConArreglo} color="#5b8def" icon={CheckSquare} subtitulo={`${kpis.tasaConArreglo}% del total`} />
         </div>
 
         {/* Barra de filtros */}
@@ -1147,7 +1147,7 @@ Por favor coordinar con el productor asignado.`;
                 } : {}}>
                 <Icon size={15} style={{ marginRight: '5px' }} /> {label}
                 {alertasTab.length > 0 && (
-                  <span style={{ marginLeft: '5px', backgroundColor: alertasTab.some(a => a.tipo === 'critica') ? '#ff4b2b' : '#f39c12', color: tc, borderRadius: '50%', fontSize: '0.6rem', width: '15px', height: '15px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                  <span style={{ marginLeft: '5px', backgroundColor: alertasTab.some(a => a.tipo === 'critica') ? '#c0725f' : '#d4943a', color: tc, borderRadius: '50%', fontSize: '0.6rem', width: '15px', height: '15px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                     {alertasTab.length}
                   </span>
                 )}
@@ -1163,7 +1163,7 @@ Por favor coordinar con el productor asignado.`;
           <section className="resumen-section">
             {alertasCrit.length > 0 && (
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ margin: '0 0 14px', color: '#ff4b2b', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: '0 0 14px', color: '#c0725f', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <AlertTriangle size={18} /> Alertas Críticas del Dataset
                 </h3>
                 {alertasCrit.map((a, i) => <AlertaBox key={i} alerta={a} mostrarBoton />)}
@@ -1259,9 +1259,9 @@ Por favor coordinar con el productor asignado.`;
                         <span style={{ color: 'var(--text-dim)' }}>{e.total} entradas</span>
                       </div>
                       <BarraApilada label="" total={e.total} segmentos={[
-                        { label: 'Aceptado', value: e.aceptados, color: '#2ecc71' },
-                        { label: 'Duda', value: e.duda, color: '#f39c12' },
-                        { label: 'Rechazado', value: e.rechazados, color: '#ff4b2b' },
+                        { label: 'Aceptado', value: e.aceptados, color: '#4caf7d' },
+                        { label: 'Duda', value: e.duda, color: '#d4943a' },
+                        { label: 'Rechazado', value: e.rechazados, color: '#c0725f' },
                         { label: 'Sin revisar', value: e.sinRevisar, color: '#607d8b' },
                       ]} />
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '4px' }}>
@@ -1274,9 +1274,9 @@ Por favor coordinar con el productor asignado.`;
                   ))}
                 </div>
                 <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  <LegendChip color="#2ecc71" label="Aceptado" />
-                  <LegendChip color="#f39c12" label="Duda" />
-                  <LegendChip color="#ff4b2b" label="Rechazado" />
+                  <LegendChip color="#4caf7d" label="Aceptado" />
+                  <LegendChip color="#d4943a" label="Duda" />
+                  <LegendChip color="#c0725f" label="Rechazado" />
                   <LegendChip color="#607d8b" label="Sin revisar" />
                 </div>
               </div>
@@ -1288,7 +1288,7 @@ Por favor coordinar con el productor asignado.`;
                     <div key={e.estilo}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
                         <span style={{ color: e.color, fontWeight: 'bold' }}>{e.estilo}</span>
-                        <span style={{ color: e.pctArreglo > 20 ? '#2ecc71' : '#f39c12', fontWeight: 'bold' }}>{e.pctArreglo}%</span>
+                        <span style={{ color: e.pctArreglo > 20 ? '#4caf7d' : '#d4943a', fontWeight: 'bold' }}>{e.pctArreglo}%</span>
                       </div>
                       <BarraApilada label="" total={e.total} segmentos={[
                         { label: 'Con arreglo', value: e.conArreglo, color: e.color },
@@ -1361,12 +1361,12 @@ Por favor coordinar con el productor asignado.`;
                 <p className="chart-subtitle">Mapas sin videos en algún estilo visual.</p>
                 <div style={{ marginTop: '20px', maxHeight: '400px', overflowY: 'auto' }}>
                   {mapasGaps.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: '#2ecc71' }}>
+                    <div style={{ textAlign: 'center', padding: '30px', color: '#4caf7d' }}>
                       <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✅</div>
                       <p style={{ margin: 0, fontSize: '0.9rem' }}>¡Todos los mapas tienen cobertura!</p>
                     </div>
                   ) : mapasGaps.map((gap, i) => (
-                    <div key={i} style={{ padding: '10px 14px', marginBottom: '8px', backgroundColor: 'rgba(255,75,43,0.06)', border: '1px solid rgba(255,75,43,0.15)', borderRadius: '6px' }}>
+                    <div key={i} style={{ padding: '10px 14px', marginBottom: '8px', backgroundColor: 'rgba(192,114,95,0.06)', border: '1px solid rgba(192,114,95,0.15)', borderRadius: '6px' }}>
                       <div style={{ fontWeight: 'bold', fontSize: '0.87rem', color: tc, marginBottom: '4px' }}>{gap.mapa}</div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {gap.estilosFaltantes.map(est => (
@@ -1399,21 +1399,21 @@ Por favor coordinar con el productor asignado.`;
                         <span style={{ color: 'var(--text-dim)' }}>{e.total} entradas</span>
                       </div>
                       <BarraApilada label="" total={e.total} segmentos={[
-                        { label: 'Humano', value: e.humano, color: '#00f2ff' },
-                        { label: 'Animal', value: e.animal, color: '#2ecc71' },
+                        { label: 'Humano', value: e.humano, color: '#5b8def' },
+                        { label: 'Animal', value: e.animal, color: '#4caf7d' },
                         { label: 'Entorno', value: e.entorno, color: '#9b59b6' },
                       ]} />
                       <div style={{ fontSize: '0.73rem', color: 'var(--text-dim)', display: 'flex', gap: '12px', marginTop: '4px', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#00f2ff' }}>Humano: {e.humano} ({e.pctHumano}%)</span>
-                        <span style={{ color: '#2ecc71' }}>Animal: {e.animal} ({e.pctAnimal}%)</span>
+                        <span style={{ color: '#5b8def' }}>Humano: {e.humano} ({e.pctHumano}%)</span>
+                        <span style={{ color: '#4caf7d' }}>Animal: {e.animal} ({e.pctAnimal}%)</span>
                         <span style={{ color: '#9b59b6' }}>Entorno: {e.entorno} ({e.pctEntorno}%)</span>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  <LegendChip color="#00f2ff" label="Humano" />
-                  <LegendChip color="#2ecc71" label="Animal" />
+                  <LegendChip color="#5b8def" label="Humano" />
+                  <LegendChip color="#4caf7d" label="Animal" />
                   <LegendChip color="#9b59b6" label="Entorno/Sin sujeto" />
                 </div>
               </div>
@@ -1433,11 +1433,11 @@ Por favor coordinar con el productor asignado.`;
                       <tr key={e.estilo} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                         <td style={{ padding: '8px 10px', color: e.color, fontWeight: 'bold' }}>{e.estilo}</td>
                         <td style={{ padding: '8px 10px', color: tc }}>{e.total}</td>
-                        <td style={{ padding: '8px 10px', color: '#00f2ff' }}>{e.humano}</td>
-                        <td style={{ padding: '8px 10px', color: '#2ecc71' }}>{e.animal}</td>
+                        <td style={{ padding: '8px 10px', color: '#5b8def' }}>{e.humano}</td>
+                        <td style={{ padding: '8px 10px', color: '#4caf7d' }}>{e.animal}</td>
                         <td style={{ padding: '8px 10px', color: '#9b59b6' }}>{e.entorno}</td>
                         <td style={{ padding: '8px 10px' }}>
-                          <span style={{ color: e.pctAnimal < 20 ? '#ff4b2b' : '#2ecc71', fontWeight: 'bold' }}>{e.pctAnimal}%</span>
+                          <span style={{ color: e.pctAnimal < 20 ? '#c0725f' : '#4caf7d', fontWeight: 'bold' }}>{e.pctAnimal}%</span>
                         </td>
                       </tr>
                     ))}
@@ -1466,19 +1466,19 @@ Por favor coordinar con el productor asignado.`;
                         <span style={{ color: 'var(--text-dim)' }}>{e.totalHumanos} humanos</span>
                       </div>
                       <BarraApilada label="" total={e.totalHumanos} segmentos={[
-                        { label: 'Hombre', value: e.hombres, color: '#00f2ff' },
-                        { label: 'Mujer', value: e.mujeres, color: '#e91e63' },
+                        { label: 'Hombre', value: e.hombres, color: '#5b8def' },
+                        { label: 'Mujer', value: e.mujeres, color: '#b05878' },
                       ]} />
                       <div style={{ fontSize: '0.73rem', color: 'var(--text-dim)', display: 'flex', gap: '14px', marginTop: '4px' }}>
-                        <span style={{ color: e.pctHombres > 60 ? '#ff4b2b' : '#00f2ff' }}>♂ {e.hombres} ({e.pctHombres}%)</span>
-                        <span style={{ color: '#e91e63' }}>♀ {e.mujeres} ({e.pctMujeres}%)</span>
+                        <span style={{ color: e.pctHombres > 60 ? '#c0725f' : '#5b8def' }}>♂ {e.hombres} ({e.pctHombres}%)</span>
+                        <span style={{ color: '#b05878' }}>♀ {e.mujeres} ({e.pctMujeres}%)</span>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div style={{ marginTop: '10px', display: 'flex', gap: '6px' }}>
-                  <LegendChip color="#00f2ff" label="Hombre" />
-                  <LegendChip color="#e91e63" label="Mujer" />
+                  <LegendChip color="#5b8def" label="Hombre" />
+                  <LegendChip color="#b05878" label="Mujer" />
                 </div>
               </div>
               <div className="chart-card glass-panel">
@@ -1492,12 +1492,12 @@ Por favor coordinar con el productor asignado.`;
                         <span style={{ color: 'var(--text-dim)' }}>{e.totalHumanos} humanos</span>
                       </div>
                       <BarraApilada label="" total={e.totalHumanos} segmentos={[
-                        { label: 'Blanco', value: e.blanco, color: '#f39c12' },
-                        { label: 'Moreno', value: e.moreno, color: '#8e44ad' },
+                        { label: 'Blanco', value: e.blanco, color: '#d4943a' },
+                        { label: 'Moreno', value: e.moreno, color: '#a0855c' },
                       ]} />
                       <div style={{ fontSize: '0.73rem', color: 'var(--text-dim)', display: 'flex', gap: '14px', marginTop: '4px' }}>
-                        <span style={{ color: e.pctBlanco > 65 ? '#ff4b2b' : '#f39c12' }}>Blanco: {e.blanco} ({e.pctBlanco}%)</span>
-                        <span style={{ color: '#8e44ad' }}>Moreno: {e.moreno} ({e.pctMoreno}%)</span>
+                        <span style={{ color: e.pctBlanco > 65 ? '#c0725f' : '#d4943a' }}>Blanco: {e.blanco} ({e.pctBlanco}%)</span>
+                        <span style={{ color: '#a0855c' }}>Moreno: {e.moreno} ({e.pctMoreno}%)</span>
                       </div>
                     </div>
                   ))}
@@ -1536,7 +1536,7 @@ Por favor coordinar con el productor asignado.`;
                     <Clock size={32} color="var(--text-dim)" style={{ marginBottom: '12px' }} />
                     <p style={{ color: 'var(--text-dim)', fontSize: '0.88rem', margin: 0 }}>
                       Sin datos de duración aún.<br />
-                      Ve a la pestaña <strong style={{ color: '#bc13fe' }}>Sync & Meta</strong> y ejecuta la extracción de metadatos.
+                      Ve a la pestaña <strong style={{ color: '#8b5cf6' }}>Sync & Meta</strong> y ejecuta la extracción de metadatos.
                     </p>
                   </div>
                 ) : (
@@ -1557,13 +1557,13 @@ Por favor coordinar con el productor asignado.`;
                             <td style={{ padding: '8px 10px', color: tc }}>{d.avgDurEstilizado ?? '—'}</td>
                             <td style={{ padding: '8px 10px' }}>
                               {d.pctRetencion != null
-                                ? <span style={{ color: d.pctRetencion < 80 ? '#ff4b2b' : '#2ecc71', fontWeight: 'bold' }}>{d.pctRetencion}%</span>
+                                ? <span style={{ color: d.pctRetencion < 80 ? '#c0725f' : '#4caf7d', fontWeight: 'bold' }}>{d.pctRetencion}%</span>
                                 : <span style={{ color: 'var(--text-dim)' }}>—</span>}
                             </td>
                             <td style={{ padding: '8px 10px' }}>
                               {d.videosConAlerta > 0
-                                ? <span style={{ color: '#ff4b2b', fontWeight: 'bold' }}>⚠ {d.videosConAlerta}</span>
-                                : <span style={{ color: '#2ecc71' }}>✅ 0</span>}
+                                ? <span style={{ color: '#c0725f', fontWeight: 'bold' }}>⚠ {d.videosConAlerta}</span>
+                                : <span style={{ color: '#4caf7d' }}>✅ 0</span>}
                             </td>
                           </tr>
                         ))}
@@ -1572,7 +1572,7 @@ Por favor coordinar con el productor asignado.`;
                     {/* Alertas de duración */}
                     {alertas.filter(a => a.bloque === 'duracion').length > 0 && (
                       <div style={{ marginTop: '20px' }}>
-                        <h4 style={{ margin: '0 0 10px', color: '#f39c12', fontSize: '0.85rem' }}>⏱ Alertas de Duración</h4>
+                        <h4 style={{ margin: '0 0 10px', color: '#d4943a', fontSize: '0.85rem' }}>⏱ Alertas de Duración</h4>
                         {alertas.filter(a => a.bloque === 'duracion').slice(0, 5).map((a, i) => <AlertaBox key={i} alerta={a} />)}
                       </div>
                     )}
@@ -1602,9 +1602,9 @@ Por favor coordinar con el productor asignado.`;
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         {[
-                          { label: 'Img Arreglo', pct: e.pctImgArreglo, color: '#00f2ff' },
-                          { label: 'Vid Arreglo', pct: e.pctVidArreglo, color: '#bc13fe' },
-                          { label: 'Prompt Final', pct: e.pctPromptFinal, color: '#2ecc71' },
+                          { label: 'Img Arreglo', pct: e.pctImgArreglo, color: '#5b8def' },
+                          { label: 'Vid Arreglo', pct: e.pctVidArreglo, color: '#8b5cf6' },
+                          { label: 'Prompt Final', pct: e.pctPromptFinal, color: '#4caf7d' },
                         ].map(({ label, pct, color }) => (
                           <div key={label} style={{ flex: 1, minWidth: '100px', padding: '8px', backgroundColor: `${color}10`, borderRadius: '6px', border: `1px solid ${color}20`, textAlign: 'center' }}>
                             <div style={{ fontSize: '1.1rem', color, fontWeight: 'bold' }}>{pct}%</div>
@@ -1650,29 +1650,29 @@ Por favor coordinar con el productor asignado.`;
           <section className="resumen-section">
             <div className="charts-row">
               {/* Sync desde Google Sheets */}
-              <div className="chart-card glass-panel" style={{ borderTop: '2px solid #00f2ff' }}>
+              <div className="chart-card glass-panel" style={{ borderTop: '2px solid #5b8def' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <Link2 size={20} color="#00f2ff" />
+                  <Link2 size={20} color="#5b8def" />
                   <h3 style={{ margin: 0 }}>Sincronizar desde Google Sheets</h3>
                 </div>
                 <p className="chart-subtitle">Actualiza el Excel local con los datos más recientes del Sheets.</p>
 
-                <div style={{ margin: '20px 0', padding: '14px', backgroundColor: 'rgba(0,242,255,0.05)', borderRadius: '8px', border: '1px solid rgba(0,242,255,0.1)' }}>
+                <div style={{ margin: '20px 0', padding: '14px', backgroundColor: 'rgba(91,141,239,0.05)', borderRadius: '8px', border: '1px solid rgba(91,141,239,0.1)' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '8px' }}>📋 Fuente de datos:</div>
                   <a href="https://docs.google.com/spreadsheets/d/1Ga5zMekIlVjHKhxkfGBIhAiCh0H3zGYf0TOoMkoctj4/edit?gid=2173056"
                     target="_blank" rel="noopener noreferrer"
-                    style={{ color: '#00f2ff', fontSize: '0.78rem', wordBreak: 'break-all' }}>
+                    style={{ color: '#5b8def', fontSize: '0.78rem', wordBreak: 'break-all' }}>
                     MATEO REGISTRO PARAMETROS — Google Sheets
                   </a>
                 </div>
 
                 {syncStatus && (
-                  <div style={{ marginBottom: '16px', padding: '14px', backgroundColor: syncStatus.error ? 'rgba(255,75,43,0.08)' : 'rgba(46,204,113,0.08)', borderRadius: '8px', border: `1px solid ${syncStatus.error ? 'rgba(255,75,43,0.2)' : 'rgba(46,204,113,0.2)'}` }}>
+                  <div style={{ marginBottom: '16px', padding: '14px', backgroundColor: syncStatus.error ? 'rgba(192,114,95,0.08)' : 'rgba(76,175,125,0.08)', borderRadius: '8px', border: `1px solid ${syncStatus.error ? 'rgba(192,114,95,0.2)' : 'rgba(76,175,125,0.2)'}` }}>
                     {syncStatus.error ? (
-                      <p style={{ margin: 0, color: '#ff4b2b', fontSize: '0.85rem' }}>❌ {syncStatus.error}</p>
+                      <p style={{ margin: 0, color: '#c0725f', fontSize: '0.85rem' }}>❌ {syncStatus.error}</p>
                     ) : (
                       <div style={{ fontSize: '0.82rem' }}>
-                        <div style={{ color: '#2ecc71', fontWeight: 'bold', marginBottom: '6px' }}>✅ Sincronización exitosa</div>
+                        <div style={{ color: '#4caf7d', fontWeight: 'bold', marginBottom: '6px' }}>✅ Sincronización exitosa</div>
                         <div style={{ color: 'var(--text-dim)' }}>🆕 Filas nuevas: <strong style={{ color: tc }}>{syncStatus.nuevas}</strong></div>
                         <div style={{ color: 'var(--text-dim)' }}>🔄 Actualizadas: <strong style={{ color: tc }}>{syncStatus.actualizadas}</strong></div>
                         <div style={{ color: 'var(--text-dim)' }}>📊 Total Sheets: <strong style={{ color: tc }}>{syncStatus.totalSheets}</strong></div>
@@ -1684,8 +1684,8 @@ Por favor coordinar con el productor asignado.`;
 
                 <button onClick={handleSync} disabled={syncing} style={{
                   width: '100%', padding: '12px', borderRadius: '8px',
-                  background: syncing ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, rgba(0,242,255,0.15), rgba(0,242,255,0.05))',
-                  border: '1px solid rgba(0,242,255,0.3)', color: syncing ? 'var(--text-dim)' : '#00f2ff',
+                  background: syncing ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, rgba(91,141,239,0.15), rgba(91,141,239,0.05))',
+                  border: '1px solid rgba(91,141,239,0.3)', color: syncing ? 'var(--text-dim)' : '#5b8def',
                   cursor: syncing ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.3s',
                 }}>
@@ -1695,24 +1695,24 @@ Por favor coordinar con el productor asignado.`;
               </div>
 
               {/* Extracción de metadatos */}
-              <div className="chart-card glass-panel" style={{ borderTop: '2px solid #bc13fe' }}>
+              <div className="chart-card glass-panel" style={{ borderTop: '2px solid #8b5cf6' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <Clock size={20} color="#bc13fe" />
+                  <Clock size={20} color="#8b5cf6" />
                   <h3 style={{ margin: 0 }}>Extraer Metadatos de Video</h3>
                 </div>
                 <p className="chart-subtitle">Extrae duración, resolución y FPS de los videos de Drive usando yt-dlp.</p>
 
                 {/* Estado de la caché */}
                 {metaStatus && (
-                  <div style={{ margin: '20px 0', padding: '14px', backgroundColor: 'rgba(188,19,254,0.05)', borderRadius: '8px', border: '1px solid rgba(188,19,254,0.1)' }}>
+                  <div style={{ margin: '20px 0', padding: '14px', backgroundColor: 'rgba(139,92,246,0.05)', borderRadius: '8px', border: '1px solid rgba(139,92,246,0.1)' }}>
                     {metaStatus.ok ? (
                       <div style={{ fontSize: '0.82rem' }}>
-                        <div style={{ color: '#bc13fe', fontWeight: 'bold', marginBottom: '8px' }}>📦 Estado de la caché:</div>
+                        <div style={{ color: '#8b5cf6', fontWeight: 'bold', marginBottom: '8px' }}>📦 Estado de la caché:</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                           <div style={{ color: 'var(--text-dim)' }}>Videos procesados: <strong style={{ color: tc }}>{metaStatus.totalVideos}</strong></div>
-                          <div style={{ color: 'var(--text-dim)' }}>Videos OK: <strong style={{ color: '#2ecc71' }}>{metaStatus.videosOk}</strong></div>
+                          <div style={{ color: 'var(--text-dim)' }}>Videos OK: <strong style={{ color: '#4caf7d' }}>{metaStatus.videosOk}</strong></div>
                           <div style={{ color: 'var(--text-dim)' }}>Imágenes: <strong style={{ color: tc }}>{metaStatus.totalImagenes}</strong></div>
-                          <div style={{ color: 'var(--text-dim)' }}>Imágenes OK: <strong style={{ color: '#2ecc71' }}>{metaStatus.imagenesOk}</strong></div>
+                          <div style={{ color: 'var(--text-dim)' }}>Imágenes OK: <strong style={{ color: '#4caf7d' }}>{metaStatus.imagenesOk}</strong></div>
                         </div>
                         {metaStatus.lastUpdated && (
                           <div style={{ color: 'var(--text-dim)', fontSize: '0.72rem', marginTop: '6px' }}>
@@ -1737,8 +1737,8 @@ Por favor coordinar con el productor asignado.`;
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <button onClick={handleExtractMeta} disabled={extracting} style={{
                     width: '100%', padding: '12px', borderRadius: '8px',
-                    background: extracting ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, rgba(188,19,254,0.15), rgba(188,19,254,0.05))',
-                    border: '1px solid rgba(188,19,254,0.3)', color: extracting ? 'var(--text-dim)' : '#bc13fe',
+                    background: extracting ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05))',
+                    border: '1px solid rgba(139,92,246,0.3)', color: extracting ? 'var(--text-dim)' : '#8b5cf6',
                     cursor: extracting ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.3s',
                   }}>
@@ -1756,8 +1756,8 @@ Por favor coordinar con el productor asignado.`;
                 </div>
 
                 {extracting && (
-                  <div style={{ marginTop: '16px', padding: '12px', backgroundColor: 'rgba(188,19,254,0.05)', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#bc13fe', marginBottom: '8px' }}>⏳ Procesando en segundo plano...</div>
+                  <div style={{ marginTop: '16px', padding: '12px', backgroundColor: 'rgba(139,92,246,0.05)', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#8b5cf6', marginBottom: '8px' }}>⏳ Procesando en segundo plano...</div>
                     <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-dim)' }}>El estado se actualizará automáticamente en 5 segundos.</p>
                   </div>
                 )}
@@ -1765,8 +1765,8 @@ Por favor coordinar con el productor asignado.`;
             </div>
 
             {/* Instrucción para management commands */}
-            <div className="glass-panel" style={{ marginTop: '20px', padding: '20px', borderLeft: '3px solid #f39c12' }}>
-              <h4 style={{ margin: '0 0 12px', color: '#f39c12', fontSize: '0.9rem' }}>💻 Comandos de Línea de Comandos (más rápidos)</h4>
+            <div className="glass-panel" style={{ marginTop: '20px', padding: '20px', borderLeft: '3px solid #d4943a' }}>
+              <h4 style={{ margin: '0 0 12px', color: '#d4943a', fontSize: '0.9rem' }}>💻 Comandos de Línea de Comandos (más rápidos)</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
                   { cmd: 'python manage.py sync_registro', desc: 'Sincroniza el Excel local con el Google Sheets' },
@@ -1776,7 +1776,7 @@ Por favor coordinar con el productor asignado.`;
                   { cmd: 'python manage.py extract_metadata --id 62', desc: 'Extrae metadatos del registro ID 62' },
                 ].map(({ cmd, desc }) => (
                   <div key={cmd} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <code style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: '4px', fontSize: '0.78rem', color: '#00f2ff', whiteSpace: 'nowrap', border: '1px solid rgba(0,242,255,0.15)' }}>{cmd}</code>
+                    <code style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: '4px', fontSize: '0.78rem', color: '#5b8def', whiteSpace: 'nowrap', border: '1px solid rgba(91,141,239,0.15)' }}>{cmd}</code>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>— {desc}</span>
                   </div>
                 ))}

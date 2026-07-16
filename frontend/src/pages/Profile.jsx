@@ -101,8 +101,8 @@ export default function Profile() {
     finally { setAvatarUploading(false); }
   };
 
-  const gradioUrl = (dl) =>
-    `${GRADIO_BASE}/?video_url=${encodeURIComponent(dl || '')}&usuario=${encodeURIComponent(user?.display_name || '')}`;
+  const gradioUrl = (dl, vid_id) =>
+    `${GRADIO_BASE}/?video_url=${encodeURIComponent(dl || '')}&usuario=${encodeURIComponent(user?.display_name || '')}&video_id=${encodeURIComponent(vid_id || '')}`;
 
   useEffect(() => {
     if (!user?.is_staff) return;
@@ -286,7 +286,7 @@ export default function Profile() {
                         badge={{ color: '#f59e0b', label: 'RESERVADO' }}
                         actions={<>
                           {v.drive_link && (
-                            <a href={gradioUrl(v.drive_link)} target="_blank" rel="noreferrer" style={s.btnPrimary}>
+                            <a href={gradioUrl(v.drive_link, v.id)} target="_blank" rel="noreferrer" style={s.btnPrimary}>
                               <Play size={13} /> Abrir en Gradio
                             </a>
                           )}
