@@ -308,7 +308,8 @@ export default function Profile() {
                       const rev = v.estado_revision || 'Pendiente';
                       const revColor = { Pendiente: '#f59e0b', Aprobado: '#22c55e', Rechazado: '#ef4444' }[rev] || '#888';
                       return (
-                        <VideoCard key={v.id} video={v} badge={{ color: revColor, label: rev.toUpperCase() }}>
+                        <VideoCard key={v.id} video={v} badge={{ color: revColor, label: rev.toUpperCase() }}
+                          onClick={() => navigate('/registro')}>
                           {rev === 'Rechazado' && v.comentario_revision && (
                             <p style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic', margin: '6px 0 0', lineHeight: 1.4 }}>
                               ↩ {v.comentario_revision}
@@ -319,6 +320,9 @@ export default function Profile() {
                               ✓ {v.comentario_revision}
                             </p>
                           )}
+                          <p style={{ fontSize: '10px', color: '#444', margin: '8px 0 0', letterSpacing: '1px' }}>
+                            VER EN REGISTRO →
+                          </p>
                         </VideoCard>
                       );
                     })}
@@ -531,11 +535,16 @@ function AvatarUpload({ user, initials, uploading, onFileRef, onPickFile, onFile
 }
 
 /* ── Video Card ── */
-function VideoCard({ video, badge, actions, children }) {
+function VideoCard({ video, badge, actions, children, onClick }) {
   const [err, setErr] = useState(false);
-  const thumb = thumbUrl(video.drive_link);
+  // Try Drive thumbnail → fallback to imagen_link (CloudFront/HTTP direct URL)
+  const driveThumb = thumbUrl(video.drive_link) || thumbUrl(video.imagen_link);
+  const directThumb = !driveThumb && !err && video.imagen_link?.startsWith('http') ? video.imagen_link : null;
+  const thumb = driveThumb || directThumb;
+  const rawId = video.id_video_equipo || video.video_id || '';
+  const displayId = rawId.toString().replace(/^#+/, '');
   return (
-    <div style={s.card}>
+    <div style={{ ...s.card, cursor: onClick ? 'pointer' : 'default' }} onClick={onClick}>
       <div style={s.cardThumb}>
         {thumb && !err
           ? <img src={thumb} alt="" style={s.cardThumbImg} onError={() => setErr(true)} />
@@ -546,7 +555,7 @@ function VideoCard({ video, badge, actions, children }) {
         </span>
       </div>
       <div style={s.cardBody}>
-        <p style={s.cardId}>#{video.id_video_equipo || video.video_id}</p>
+        <p style={s.cardId}>#{displayId}</p>
         <div style={s.cardMeta}>
           {video.mapa     && <span style={s.metaTag}>{video.mapa}</span>}
           {video.especie  && <span style={s.metaTag}>{video.especie}</span>}
