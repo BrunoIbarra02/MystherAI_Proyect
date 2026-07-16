@@ -2,26 +2,36 @@ import csv, os, io, re
 import requests as req
 import openpyxl
 from django.core.management.base import BaseCommand
-from django.db import IntegrityError
 from apps.sheets.models import VideoMetadata
 
 SHEETS_ID = '1Ga5zMekIlVjHKhxkfGBIhAiCh0H3zGYf0TOoMkoctj4'
 XLSX_URL  = f'https://docs.google.com/spreadsheets/d/{SHEETS_ID}/export?format=xlsx'
 
-# Columnas de Registro que contienen URLs (índice 0-based)
-# 5=imagen, 7=video, 8=video orginal, 12=Imagen arreglo, 14=Video arreglo
 REGISTRO_LINK_COLS = {5, 7, 8, 12, 14}
 
 class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
-        VideoMetadata.objects.all().delete()
-        self.stdout.write("Limpiando y Re-importando datos...")
+        self.stdout.write("Sincronizando datos (preservando estados de app)...")
 
-        def safe_create(obj):
+        def safe_upsert_registro(video_id, defaults):
+            """Create or update a registro record without touching app-managed fields."""
             try:
-                obj.save()
-            except IntegrityError:
+                VideoMetadata.objects.update_or_create(
+                    tipo='registro', video_id=video_id,
+                    defaults=defaults,
+                )
+            except Exception:
+                pass
+
+        def safe_upsert_censo(id_equipo, defaults):
+            """Create or update a censo record without touching estado_censo/reservado_por."""
+            try:
+                VideoMetadata.objects.update_or_create(
+                    tipo='censo', id_video_equipo=str(id_equipo),
+                    defaults=defaults,
+                )
+            except Exception:
                 pass
 
         # ---------------------------------------------------------------
@@ -34,7 +44,6 @@ class Command(BaseCommand):
             resp.raise_for_status()
             wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=False)
 
-            # Buscar la hoja de Registro (por nombre o la primera disponible)
             sheet_names = [s.lower() for s in wb.sheetnames]
             if 'registro' in sheet_names:
                 ws = wb[wb.sheetnames[sheet_names.index('registro')]]
@@ -43,9 +52,7 @@ class Command(BaseCommand):
             self.stdout.write(f"  Hoja: '{ws.title}' ({ws.max_row} filas)")
 
             def extraer_celda(cell, col_idx=None):
-                """Extrae el valor de la celda; para columnas de URL usa el hipervínculo."""
                 val = cell.value
-                # openpyxl lee números enteros como float (161 → 161.0); convertir
                 if isinstance(val, float) and val.is_integer():
                     val = int(val)
                 texto = str(val).strip() if val is not None else ''
@@ -53,26 +60,20 @@ class Command(BaseCommand):
                     texto = ''
 
                 if col_idx in REGISTRO_LINK_COLS:
-                    # 1) hipervínculo explícito (incluye Smart Chips exportados)
                     if cell.hyperlink and cell.hyperlink.target:
                         return str(cell.hyperlink.target).strip()
-                    # 2) fórmula =HYPERLINK("url", ...)
                     m = re.match(r'=HYPERLINK\("([^"]+)"', texto, re.IGNORECASE)
                     if m:
                         return m.group(1)
-                    # 3) texto directo que ya es una URL
                     if texto.lower().startswith('http'):
                         return texto
-                    # 4) Smart Chip exportado como nombre de archivo → no tenemos URL
                     return ''
 
                 return texto
 
-            # Leer encabezados de la primera fila
             headers = [extraer_celda(c) for c in next(ws.iter_rows(min_row=1, max_row=1))]
 
             def col_idx(name):
-                """Devuelve el índice de columna para un nombre de encabezado."""
                 name_l = name.lower().strip()
                 for i, h in enumerate(headers):
                     if h.lower().strip() == name_l:
@@ -105,32 +106,29 @@ class Command(BaseCommand):
                 img_url   = cell_val(row_cells, idx_img, is_link=True)
                 prompt    = cell_val(row_cells, idx_pv)
 
-                # Saltar filas incompletas: sin ID, sin video, sin imagen o sin prompt
                 if not v_id or not video_url or not img_url or not prompt:
                     skipped += 1
                     continue
 
-                obj = VideoMetadata(
-                    video_id    = v_id,
-                    tipo        = 'registro',
-                    usuario     = cell_val(row_cells, idx_mb),
-                    mateo_miguel= cell_val(row_cells, idx_mm),
-                    estilizado  = cell_val(row_cells, idx_est),
-                    prompt_imagen = cell_val(row_cells, idx_pi),
-                    imagen_link = img_url,
-                    prompt_video= prompt,
-                    drive_link  = video_url,
-                    video_original_link = cell_val(row_cells, idx_orig, is_link=True),
-                    aceptado    = cell_val(row_cells, idx_acep),
-                    prompt_final= cell_val(row_cells, idx_pf),
-                )
-                safe_create(obj)
+                # Only update source fields — never touch estado_revision / comentario_revision
+                safe_upsert_registro(v_id, {
+                    'usuario':              cell_val(row_cells, idx_mb),
+                    'mateo_miguel':         cell_val(row_cells, idx_mm),
+                    'estilizado':           cell_val(row_cells, idx_est),
+                    'prompt_imagen':        cell_val(row_cells, idx_pi),
+                    'imagen_link':          img_url,
+                    'prompt_video':         prompt,
+                    'drive_link':           video_url,
+                    'video_original_link':  cell_val(row_cells, idx_orig, is_link=True),
+                    'aceptado':             cell_val(row_cells, idx_acep),
+                    'prompt_final':         cell_val(row_cells, idx_pf),
+                })
                 count += 1
 
-            self.stdout.write(f"✅ Registro importado desde Sheets (XLSX): {count} filas ({skipped} incompletas omitidas).")
+            self.stdout.write(f"Registro sincronizado desde Sheets: {count} filas ({skipped} incompletas omitidas).")
 
         except Exception as e:
-            self.stdout.write(f"⚠️  XLSX no disponible ({e}), usando registro.csv local...")
+            self.stdout.write(f"XLSX no disponible ({e}), usando registro.csv local...")
             registro_path = 'registro.csv'
             if os.path.exists(registro_path):
                 def get_v(row, *keys):
@@ -148,27 +146,25 @@ class Command(BaseCommand):
                         v_id = get_v(row, 'Id')
                         if not v_id:
                             continue
-                        obj = VideoMetadata(
-                            video_id=v_id, tipo='registro',
-                            usuario=get_v(row, 'Miembro'),
-                            mateo_miguel=get_v(row, 'Mateo/Miguel'),
-                            estilizado=get_v(row, 'Estilizado'),
-                            prompt_imagen=get_v(row, 'Prompt imagen'),
-                            imagen_link=get_v(row, 'imagen'),
-                            prompt_video=get_v(row, 'prompt video'),
-                            drive_link=get_v(row, 'video'),
-                            video_original_link=get_v(row, 'video orginal', 'video original'),
-                            aceptado=get_v(row, 'ACEPTADO'),
-                            prompt_final=get_v(row, 'Prompt Final'),
-                        )
-                        safe_create(obj)
+                        safe_upsert_registro(v_id, {
+                            'usuario':             get_v(row, 'Miembro'),
+                            'mateo_miguel':        get_v(row, 'Mateo/Miguel'),
+                            'estilizado':          get_v(row, 'Estilizado'),
+                            'prompt_imagen':       get_v(row, 'Prompt imagen'),
+                            'imagen_link':         get_v(row, 'imagen'),
+                            'prompt_video':        get_v(row, 'prompt video'),
+                            'drive_link':          get_v(row, 'video'),
+                            'video_original_link': get_v(row, 'video orginal', 'video original'),
+                            'aceptado':            get_v(row, 'ACEPTADO'),
+                            'prompt_final':        get_v(row, 'Prompt Final'),
+                        })
                         count += 1
-                self.stdout.write(f"✅ Registro importado desde CSV: {count} filas.")
+                self.stdout.write(f"Registro sincronizado desde CSV: {count} filas.")
             else:
-                self.stdout.write("❌ No se encontró registro.csv")
+                self.stdout.write("No se encontro registro.csv")
 
         # ---------------------------------------------------------------
-        # CENSO — CSV local (no tiene Smart Chips)
+        # CENSO — CSV local, preserva estado_censo y estados de app
         # ---------------------------------------------------------------
         censo_path = 'censo.csv'
         if os.path.exists(censo_path):
@@ -176,23 +172,32 @@ class Command(BaseCommand):
             with open(censo_path, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    v_id = row.get('ID DE VIDEO', '').strip()
+                    v_id     = row.get('ID DE VIDEO', '').strip()
+                    id_equip = row.get('ID DE VIDEO EQUIPO', '').strip()
                     if not v_id:
                         continue
-                    obj = VideoMetadata(
-                        video_id=v_id, tipo='censo',
-                        usuario=row.get('usuario', '').strip(),
-                        id_video_equipo=row.get('ID DE VIDEO EQUIPO', '').strip(),
-                        drive_link=row.get('LINK', '').strip(),
-                        mapa=row.get('MAPA', '').strip(),
-                        genero=row.get('GENERO', '').strip(),
-                        etnia=row.get('ETNIA', '').strip(),
-                        duracion=row.get('DURACION', '').strip(),
-                        camara=row.get('CAMARA', '').strip(),
-                        especie=row.get('ESPECIE', '').strip(),
-                    )
-                    safe_create(obj)
+                    # Normalize float ids like '1.0' → '1'
+                    try:
+                        id_equip = str(int(float(id_equip))) if id_equip else id_equip
+                    except (ValueError, TypeError):
+                        pass
+
+                    # Only update source fields — never touch estado_censo / reservado_por
+                    safe_upsert_censo(id_equip, {
+                        'video_id':       v_id,
+                        'usuario':        row.get('usuario', '').strip(),
+                        'drive_link':     row.get('LINK', '').strip(),
+                        'mapa':           row.get('MAPA', '').strip(),
+                        'genero':         row.get('GENERO', '').strip(),
+                        'etnia':          row.get('ETNIA', '').strip(),
+                        'duracion':       row.get('DURACION', '').strip(),
+                        'camara':         row.get('CAMARA', '').strip(),
+                        'especie':        row.get('ESPECIE', '').strip(),
+                        'plano':          row.get('PLANO', '').strip(),
+                        'interior':       row.get('INTERIOR', '').strip(),
+                        'accion':         row.get('ACCION', '').strip(),
+                    })
                     count += 1
-            self.stdout.write(f"✅ Censo importado: {count} filas.")
+            self.stdout.write(f"Censo sincronizado: {count} filas.")
         else:
-            self.stdout.write("❌ No se encontró censo.csv")
+            self.stdout.write("No se encontro censo.csv")
