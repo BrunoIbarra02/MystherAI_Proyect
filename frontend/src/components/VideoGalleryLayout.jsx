@@ -18,7 +18,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
   const [filters, setFilters] = useState({});
   const [filterOptions, setFilterOptions] = useState({});
   const [search, setSearch] = useState('');
-  const isAdmin = true;
+  const isAdmin = !!user?.is_staff;
+  // Members can edit/delete only their own registro entries
+  const canEditVideo = (v) => isAdmin || (tipo === 'registro' && v?.usuario === user?.display_name);
   const [formData, setFormData] = useState({});
   const [zoomImageUrl, setZoomImageUrl] = useState(null);
 
@@ -487,8 +489,8 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                       ? `REGISTRO: ${selectedVideo.video_id}`
                       : `CENSO: #${selectedVideo.id_video_equipo || selectedVideo.video_id}`}
                   </h2>
-                  {isAdmin && !isEditingInside && <button className="neon-button" style={{ borderColor: 'orange', color: 'orange', padding: '5px 15px' }} onClick={() => startEdit(selectedVideo)}>EDITAR ✎</button>}
-                  {isAdmin && !isEditingInside && <button className="logout-btn" style={{ padding: '5px 15px', margin: 0, backgroundColor: 'red', color: 'white', border: 'none', cursor: 'pointer' }} onClick={() => handleDelete(selectedVideo.id)}>BORRAR 🗑</button>}
+                  {canEditVideo(selectedVideo) && !isEditingInside && <button className="neon-button" style={{ borderColor: 'orange', color: 'orange', padding: '5px 15px' }} onClick={() => startEdit(selectedVideo)}>EDITAR ✎</button>}
+                  {canEditVideo(selectedVideo) && !isEditingInside && <button className="logout-btn" style={{ padding: '5px 15px', margin: 0, backgroundColor: 'red', color: 'white', border: 'none', cursor: 'pointer' }} onClick={() => handleDelete(selectedVideo.id)}>BORRAR 🗑</button>}
                 </div>
 
                 {isEditingInside ? (
