@@ -378,6 +378,14 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                       {v.tipo === 'censo' ? `#${v.id_video_equipo || v.video_id}` : `ID: ${v.video_id}`}
                     </h3>
                     <p className="yt-meta">{v.usuario} • <span style={{ color: 'var(--silver-mid)' }}>{v.estilizado || v.mapa}</span></p>
+                    {v.tipo === 'censo' && (v.especie || v.plano || v.interior || v.accion) && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                        {v.especie  && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '20px', background: 'rgba(0,255,135,0.08)', color: '#00ff87', border: '1px solid rgba(0,255,135,0.2)', letterSpacing: '0.5px' }}>{v.especie}</span>}
+                        {v.plano    && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '20px', background: 'rgba(147,197,253,0.08)', color: '#93c5fd', border: '1px solid rgba(147,197,253,0.2)', letterSpacing: '0.5px' }}>{v.plano}</span>}
+                        {v.interior && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '20px', background: 'rgba(196,181,253,0.08)', color: '#c4b5fd', border: '1px solid rgba(196,181,253,0.2)', letterSpacing: '0.5px' }}>{v.interior}</span>}
+                        {v.accion   && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '20px', background: 'rgba(253,186,116,0.08)', color: '#fba976', border: '1px solid rgba(253,186,116,0.2)', letterSpacing: '0.5px' }}>{v.accion}</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
@@ -408,6 +416,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                     <input placeholder="Duración" value={formData.duracion || ''} onChange={e => setFormData({ ...formData, duracion: e.target.value })} />
                     <select value={formData.camara || ''} onChange={e => setFormData({ ...formData, camara: e.target.value })}><option value="">CÁMARA</option>{filterOptions.camara?.map(c => <option key={c} value={c}>{c}</option>)}</select>
                     <select value={formData.especie || ''} onChange={e => setFormData({ ...formData, especie: e.target.value })}><option value="">ESPECIE</option>{filterOptions.especie?.map(es => <option key={es} value={es}>{es}</option>)}</select>
+                    <select value={formData.plano || ''} onChange={e => setFormData({ ...formData, plano: e.target.value })}><option value="">PLANO</option>{filterOptions.plano?.map(p => <option key={p} value={p}>{p}</option>)}</select>
+                    <select value={formData.interior || ''} onChange={e => setFormData({ ...formData, interior: e.target.value })}><option value="">INTERIOR</option>{filterOptions.interior?.map(i => <option key={i} value={i}>{i}</option>)}</select>
+                    <select value={formData.accion || ''} onChange={e => setFormData({ ...formData, accion: e.target.value })}><option value="">ACCION</option>{filterOptions.accion?.map(a => <option key={a} value={a}>{a}</option>)}</select>
                   </>
                 ) : (
                   <>
@@ -476,6 +487,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                           <input value={formData.duracion || ''} placeholder="Duración" onChange={e => setFormData({ ...formData, duracion: e.target.value })} />
                           <input value={formData.camara || ''} placeholder="Cámara" onChange={e => setFormData({ ...formData, camara: e.target.value })} />
                           <input value={formData.especie || ''} placeholder="Especie" onChange={e => setFormData({ ...formData, especie: e.target.value })} />
+                          <input value={formData.plano || ''} placeholder="Plano" onChange={e => setFormData({ ...formData, plano: e.target.value })} />
+                          <input value={formData.interior || ''} placeholder="Interior / Exterior" onChange={e => setFormData({ ...formData, interior: e.target.value })} />
+                          <input value={formData.accion || ''} placeholder="Acción" onChange={e => setFormData({ ...formData, accion: e.target.value })} />
                         </>
                       ) : (
                         <>
@@ -604,13 +618,16 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                           <div className="meta-box"><label style={{ color: 'gray' }}>DURACION</label><p>{selectedVideo.duracion || 'N/A'}</p></div>
                           <div className="meta-box"><label style={{ color: 'gray' }}>CAMARA</label><p>{selectedVideo.camara || 'N/A'}</p></div>
                           <div className="meta-box"><label style={{ color: 'gray' }}>ESPECIE</label><p>{selectedVideo.especie || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>PLANO</label><p>{selectedVideo.plano || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>INTERIOR</label><p>{selectedVideo.interior || 'N/A'}</p></div>
+                          <div className="meta-box"><label style={{ color: 'gray' }}>ACCION</label><p>{selectedVideo.accion || 'N/A'}</p></div>
                         </div>
 
                         {/* ── PANEL DE RESERVA ── */}
                         {(() => {
                           const est = selectedVideo.estado_censo || 'Disponible';
                           const estadoColor = { Disponible: '#22c55e', Reservado: '#f59e0b', Estilizado: '#6b7280' }[est] || '#6b7280';
-                          const gradioUrl = `${GRADIO_BASE}/?video_url=${encodeURIComponent(selectedVideo.drive_link || '')}`;
+                          const gradioUrl = `${GRADIO_BASE}/?video_url=${encodeURIComponent(selectedVideo.drive_link || '')}&usuario=${encodeURIComponent(user?.display_name || '')}`;
                           return (
                             <div style={{ gridColumn: '1/-1', marginTop: '20px', padding: '18px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid #1e1e1e', borderRadius: '10px' }}>
                               {/* Estado badge */}

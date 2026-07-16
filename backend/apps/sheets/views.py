@@ -18,7 +18,7 @@ class VideoListView(generics.ListCreateAPIView):
         tipo = self.request.query_params.get('tipo')
         search = self.request.query_params.get('search')
         if tipo: queryset = queryset.filter(tipo__iexact=tipo)
-        for f in ['usuario', 'mapa', 'etnia', 'estilizado', 'aceptado', 'genero', 'especie', 'camara', 'mateo_miguel']:
+        for f in ['usuario', 'mapa', 'etnia', 'estilizado', 'aceptado', 'genero', 'especie', 'camara', 'mateo_miguel', 'plano', 'interior', 'accion']:
             val = self.request.query_params.get(f)
             if val: queryset = queryset.filter(**{f"{f}__icontains": val})
         # estado_censo: NULL and '' are treated as 'Disponible'
@@ -44,7 +44,7 @@ class FilterOptionsView(APIView):
     def get(self, request):
         tipo = request.query_params.get('tipo', 'censo').lower()
         if tipo == 'censo':
-            fields_to_filter = ["usuario", "mapa", "genero", "etnia", "camara", "especie"]
+            fields_to_filter = ["usuario", "mapa", "genero", "etnia", "camara", "especie", "plano", "interior", "accion"]
         else:
             fields_to_filter = ["usuario", "estilizado", "aceptado", "mateo_miguel"]
         options = {}
