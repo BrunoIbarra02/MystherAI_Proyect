@@ -60,7 +60,9 @@ class ProfileDataView(APIView):
             tipo='registro',
             usuario__iexact=display,
         ).values('id', 'video_id', 'id_video_equipo', 'mapa', 'especie',
-                 'drive_link', 'estilizado', 'estado_revision', 'comentario_revision')
+                 'drive_link', 'imagen_link', 'estilizado', 'estado_revision',
+                 'comentario_revision', 'prompt_imagen', 'prompt_video'
+                 ).order_by('-id')
 
         # Admin: all team reservations + all registro entries
         all_reservations = []
@@ -74,7 +76,8 @@ class ProfileDataView(APIView):
                 VideoMetadata.objects.filter(tipo='registro')
                 .values('id', 'video_id', 'id_video_equipo', 'usuario', 'mapa',
                         'drive_link', 'imagen_link', 'estilizado',
-                        'estado_revision', 'comentario_revision')
+                        'estado_revision', 'comentario_revision',
+                        'prompt_imagen', 'prompt_video')
                 .order_by('-id')
             )
 

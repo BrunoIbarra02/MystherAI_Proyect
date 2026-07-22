@@ -200,13 +200,34 @@ export default function Profile() {
               </h3>
             </div>
 
-            {/* Image preview */}
-            {(selectedReg.imagen_link || selectedReg.drive_link) && (() => {
-              const th = thumbUrl(selectedReg.imagen_link || selectedReg.drive_link);
-              return th ? (
-                <img src={th} alt="" style={{ width: '100%', borderRadius: '10px', marginBottom: '20px', maxHeight: '320px', objectFit: 'cover' }} />
-              ) : null;
+            {/* Video estilizado */}
+            {selectedReg.drive_link && (
+              <video
+                src={selectedReg.drive_link}
+                controls
+                style={{ width: '100%', borderRadius: '10px', marginBottom: '12px', maxHeight: '340px', background: '#000' }}
+              />
+            )}
+            {/* Imagen estilizada */}
+            {selectedReg.imagen_link && (() => {
+              const th = thumbUrl(selectedReg.imagen_link) || selectedReg.imagen_link;
+              return <img src={th} alt="" style={{ width: '100%', borderRadius: '10px', marginBottom: '16px', maxHeight: '260px', objectFit: 'cover' }} />;
             })()}
+            {/* Prompts */}
+            {(selectedReg.prompt_imagen || selectedReg.prompt_video) && (
+              <div style={{ marginBottom: '16px', padding: '12px', background: '#0d0d0d', borderRadius: '8px', border: '1px solid #1a1a1a' }}>
+                {selectedReg.prompt_imagen && (
+                  <p style={{ margin: '0 0 6px', fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    PROMPT IMAGEN <span style={{ color: '#888', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>"{selectedReg.prompt_imagen}"</span>
+                  </p>
+                )}
+                {selectedReg.prompt_video && (
+                  <p style={{ margin: 0, fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    PROMPT VIDEO <span style={{ color: '#888', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>"{selectedReg.prompt_video}"</span>
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Current status */}
             {(() => {
