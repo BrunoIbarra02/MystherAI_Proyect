@@ -1524,7 +1524,7 @@ class AsignarCensoView(APIView):
 
 
 # Personas que ya no están en la empresa — si se deniega su trabajo se borra y se libera el censo
-FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan'}
+FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan', 'jose maria'}
 
 
 @method_decorator(csrf_exempt, name='dispatch')

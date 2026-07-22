@@ -9,7 +9,12 @@ ACCOUNTS = [
     ('kathysp99@gmail.com',        'Katty',  'Mystherai2026', False, False),
     ('wilson@mystherai.com',       'Wilson', 'Mystherai2026', False, False),
     ('olenka@mystherai.com',       'Olenka', 'Mystherai2026', False, False),
-    ('rodrigo@mystherai.com',      'Rodrigo','Mystherai2026', False, False),
+    ('rodrigo@mystherai.com',      'Rodrigo',  'Mystherai2026', False, False),
+]
+
+# Ex-empleados: se desactivan (no se borran, para conservar el histórico de sus registros)
+DEACTIVATED = [
+    'chema.lezuza@gmail.com',  # Jose Maria — ya no está en el equipo
 ]
 
 
@@ -41,6 +46,12 @@ class Command(BaseCommand):
                     changed = True
                 if changed:
                     user.save()
+
+        # Desactivar cuentas de ex-empleados
+        for email in DEACTIVATED:
+            n = User.objects.filter(username=email, is_active=True).update(is_active=False)
+            if n:
+                self.stdout.write(f'✓ Desactivado: {email}')
 
         # Liberar todas las reservas de Bruno (admin no estiliza)
         try:

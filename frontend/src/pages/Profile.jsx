@@ -32,6 +32,15 @@ const VideoPlayer = ({ url, style }) => {
   return <video src={url} controls style={{ width: '100%', background: '#000', ...style }} />;
 };
 
+const EmptyBox = ({ text, height = '169px' }) => (
+  <div style={{
+    width: '100%', height, borderRadius: '10px', background: '#0d0d0d',
+    border: '1px dashed #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }}>
+    <span style={{ fontSize: '11px', color: '#444', letterSpacing: '0.5px' }}>{text}</span>
+  </div>
+);
+
 const resizeImage = (file, maxPx = 300) => new Promise((resolve, reject) => {
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -224,43 +233,51 @@ export default function Profile() {
               </h3>
             </div>
 
+            {/* Warning if incomplete data */}
+            {(!selectedReg.drive_link || !selectedReg.imagen_link) && (
+              <div style={{ marginBottom: '14px', padding: '10px 14px', background: '#ef444414', border: '1px solid #ef444444', borderRadius: '8px' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#ef8888', fontWeight: 600 }}>
+                  ⚠ Registro incompleto — faltan: {[!selectedReg.imagen_link && 'imagen', !selectedReg.drive_link && 'video', !selectedReg.prompt_imagen && !selectedReg.prompt_video && 'prompts'].filter(Boolean).join(', ')}. No se puede evaluar correctamente; considera DENEGAR o ELIMINAR.
+                </p>
+              </div>
+            )}
+
             {/* Original vs Estilizado — lado a lado */}
-            {(selectedReg.video_original_link || selectedReg.drive_link) && (
-              <div style={{ display: 'grid', gridTemplateColumns: selectedReg.video_original_link && selectedReg.drive_link ? '1fr 1fr' : '1fr', gap: '12px', marginBottom: '12px' }}>
-                {selectedReg.video_original_link && (
-                  <div>
-                    <p style={{ margin: '0 0 6px', fontSize: '9px', color: '#555', letterSpacing: '2px', fontWeight: 700 }}>ORIGINAL (CENSO)</p>
-                    <VideoPlayer url={selectedReg.video_original_link} style={{ borderRadius: '10px', maxHeight: '300px' }} />
-                  </div>
-                )}
-                {selectedReg.drive_link && (
-                  <div>
-                    <p style={{ margin: '0 0 6px', fontSize: '9px', color: '#a78bfa', letterSpacing: '2px', fontWeight: 700 }}>ESTILIZADO</p>
-                    <VideoPlayer url={selectedReg.drive_link} style={{ borderRadius: '10px', maxHeight: '300px' }} />
-                  </div>
-                )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <p style={{ margin: '0 0 6px', fontSize: '9px', color: '#555', letterSpacing: '2px', fontWeight: 700 }}>ORIGINAL (CENSO)</p>
+                {selectedReg.video_original_link
+                  ? <VideoPlayer url={selectedReg.video_original_link} style={{ borderRadius: '10px', maxHeight: '300px' }} />
+                  : <EmptyBox text="Sin video original" />}
               </div>
-            )}
+              <div>
+                <p style={{ margin: '0 0 6px', fontSize: '9px', color: '#a78bfa', letterSpacing: '2px', fontWeight: 700 }}>ESTILIZADO</p>
+                {selectedReg.drive_link
+                  ? <VideoPlayer url={selectedReg.drive_link} style={{ borderRadius: '10px', maxHeight: '300px' }} />
+                  : <EmptyBox text="Sin video estilizado" />}
+              </div>
+            </div>
             {/* Imagen estilizada */}
-            {selectedReg.imagen_link && (() => {
-              const th = thumbUrl(selectedReg.imagen_link) || selectedReg.imagen_link;
-              return <img src={th} alt="" style={{ width: '100%', borderRadius: '10px', marginBottom: '16px', maxHeight: '260px', objectFit: 'cover' }} />;
-            })()}
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{ margin: '0 0 6px', fontSize: '9px', color: '#555', letterSpacing: '2px', fontWeight: 700 }}>IMAGEN ESTILIZADA</p>
+              {selectedReg.imagen_link
+                ? <img src={thumbUrl(selectedReg.imagen_link) || selectedReg.imagen_link} alt=""
+                    style={{ width: '100%', borderRadius: '10px', maxHeight: '260px', objectFit: 'cover' }} />
+                : <EmptyBox text="Sin imagen" height="120px" />}
+            </div>
             {/* Prompts */}
-            {(selectedReg.prompt_imagen || selectedReg.prompt_video) && (
-              <div style={{ marginBottom: '16px', padding: '12px', background: '#0d0d0d', borderRadius: '8px', border: '1px solid #1a1a1a' }}>
-                {selectedReg.prompt_imagen && (
-                  <p style={{ margin: '0 0 6px', fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                    PROMPT IMAGEN <span style={{ color: '#888', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>"{selectedReg.prompt_imagen}"</span>
-                  </p>
-                )}
-                {selectedReg.prompt_video && (
-                  <p style={{ margin: 0, fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                    PROMPT VIDEO <span style={{ color: '#888', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>"{selectedReg.prompt_video}"</span>
-                  </p>
-                )}
-              </div>
-            )}
+            <div style={{ marginBottom: '16px', padding: '12px', background: '#0d0d0d', borderRadius: '8px', border: '1px solid #1a1a1a' }}>
+              <p style={{ margin: '0 0 6px', fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                PROMPT IMAGEN <span style={{ color: selectedReg.prompt_imagen ? '#888' : '#444', textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontStyle: selectedReg.prompt_imagen ? 'normal' : 'italic' }}>
+                  {selectedReg.prompt_imagen ? `"${selectedReg.prompt_imagen}"` : '(vacío)'}
+                </span>
+              </p>
+              <p style={{ margin: 0, fontSize: '11px', color: '#555', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                PROMPT VIDEO <span style={{ color: selectedReg.prompt_video ? '#888' : '#444', textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontStyle: selectedReg.prompt_video ? 'normal' : 'italic' }}>
+                  {selectedReg.prompt_video ? `"${selectedReg.prompt_video}"` : '(vacío)'}
+                </span>
+              </p>
+            </div>
 
             {/* Current status */}
             {(() => {
@@ -386,7 +403,10 @@ export default function Profile() {
             {/* Estilizados del equipo (admin) */}
             {tab === 'equipo_registro' && user?.is_staff && (() => {
               const REV_FILTERS = ['Todos', 'Pendiente', 'Aprobado', 'Rechazado'];
-              const filtered = regFilter === 'Todos'
+              const sinVideoCount = allRegistro.filter(v => !v.drive_link).length;
+              const filtered = regFilter === 'SinVideo'
+                ? allRegistro.filter(v => !v.drive_link)
+                : regFilter === 'Todos'
                 ? allRegistro
                 : allRegistro.filter(v => (v.estado_revision || 'Pendiente') === regFilter);
               return (
@@ -410,6 +430,17 @@ export default function Profile() {
                         </button>
                       );
                     })}
+                    {sinVideoCount > 0 && (
+                      <button onClick={() => setRegFilter('SinVideo')} style={{
+                        padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                        letterSpacing: '1px', cursor: 'pointer', border: '1px solid #ef444466',
+                        background: regFilter === 'SinVideo' ? '#ef444422' : 'transparent',
+                        color: regFilter === 'SinVideo' ? '#ef4444' : '#7a4444',
+                      }}>
+                        ⚠ SIN VIDEO
+                        <span style={{ marginLeft: '6px', opacity: 0.7 }}>{sinVideoCount}</span>
+                      </button>
+                    )}
                   </div>
 
                   {filtered.length === 0
