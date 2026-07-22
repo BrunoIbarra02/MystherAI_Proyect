@@ -61,8 +61,8 @@ class ProfileDataView(APIView):
             usuario__iexact=display,
         ).values('id', 'video_id', 'id_video_equipo', 'mapa', 'especie',
                  'drive_link', 'imagen_link', 'estilizado', 'estado_revision',
-                 'comentario_revision', 'prompt_imagen', 'prompt_video'
-                 ).order_by('-id')
+                 'comentario_revision', 'prompt_imagen', 'prompt_video',
+                 'video_original_link').order_by('-id')
 
         # Admin: all team reservations + all registro entries
         all_reservations = []
@@ -77,7 +77,7 @@ class ProfileDataView(APIView):
                 .values('id', 'video_id', 'id_video_equipo', 'usuario', 'mapa',
                         'drive_link', 'imagen_link', 'estilizado',
                         'estado_revision', 'comentario_revision',
-                        'prompt_imagen', 'prompt_video')
+                        'prompt_imagen', 'prompt_video', 'video_original_link')
                 .order_by('-id')
             )
 

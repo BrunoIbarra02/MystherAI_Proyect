@@ -22,6 +22,16 @@ const thumbUrl = (url) => {
   return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w400` : null;
 };
 
+/* Renders Drive videos via iframe preview; direct URLs (CloudFront etc.) via <video> */
+const VideoPlayer = ({ url, style }) => {
+  const driveId = extractDriveID(url);
+  if (driveId) {
+    return <iframe src={`https://drive.google.com/file/d/${driveId}/preview`} allow="autoplay"
+      style={{ border: 'none', width: '100%', aspectRatio: '16/9', ...style }} title="video" />;
+  }
+  return <video src={url} controls style={{ width: '100%', background: '#000', ...style }} />;
+};
+
 const resizeImage = (file, maxPx = 300) => new Promise((resolve, reject) => {
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -61,6 +71,8 @@ export default function Profile() {
   const [regLoading, setRegLoading]   = useState(false);
   const [errores, setErrores]         = useState([]);
   const [errFilter, setErrFilter]     = useState('');
+  const [asignando, setAsignando]     = useState(false);
+  const [asignResult, setAsignResult] = useState(null);
   const fileRef = useRef();
 
   useEffect(() => {
@@ -75,6 +87,18 @@ export default function Profile() {
   }, []);
 
   const handleLogout = async () => { await logout(); navigate('/'); };
+
+  const handleAsignarCenso = async () => {
+    if (!window.confirm('¿Repartir TODOS los videos disponibles del censo entre los miembros del equipo?')) return;
+    setAsignando(true);
+    try {
+      const r = await api.post('/sheets/asignar-censo/');
+      setAsignResult(r.data);
+      const p = await api.get('/auth/profile-data/');
+      setData(p.data);
+    } catch (e) { alert(e.response?.data?.error || 'Error al repartir el censo.'); }
+    finally { setAsignando(false); }
+  };
 
   const handleLiberar = async (videoId) => {
     setLiberando(videoId);
@@ -180,7 +204,7 @@ export default function Profile() {
           zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            width: '90%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto',
+            width: '90%', maxWidth: '960px', maxHeight: '90vh', overflowY: 'auto',
             background: '#111', border: '1px solid #1c1c1c', borderRadius: '16px',
             padding: '28px', position: 'relative',
           }}>
@@ -200,13 +224,22 @@ export default function Profile() {
               </h3>
             </div>
 
-            {/* Video estilizado */}
-            {selectedReg.drive_link && (
-              <video
-                src={selectedReg.drive_link}
-                controls
-                style={{ width: '100%', borderRadius: '10px', marginBottom: '12px', maxHeight: '340px', background: '#000' }}
-              />
+            {/* Original vs Estilizado — lado a lado */}
+            {(selectedReg.video_original_link || selectedReg.drive_link) && (
+              <div style={{ display: 'grid', gridTemplateColumns: selectedReg.video_original_link && selectedReg.drive_link ? '1fr 1fr' : '1fr', gap: '12px', marginBottom: '12px' }}>
+                {selectedReg.video_original_link && (
+                  <div>
+                    <p style={{ margin: '0 0 6px', fontSize: '9px', color: '#555', letterSpacing: '2px', fontWeight: 700 }}>ORIGINAL (CENSO)</p>
+                    <VideoPlayer url={selectedReg.video_original_link} style={{ borderRadius: '10px', maxHeight: '300px' }} />
+                  </div>
+                )}
+                {selectedReg.drive_link && (
+                  <div>
+                    <p style={{ margin: '0 0 6px', fontSize: '9px', color: '#a78bfa', letterSpacing: '2px', fontWeight: 700 }}>ESTILIZADO</p>
+                    <VideoPlayer url={selectedReg.drive_link} style={{ borderRadius: '10px', maxHeight: '300px' }} />
+                  </div>
+                )}
+              </div>
             )}
             {/* Imagen estilizada */}
             {selectedReg.imagen_link && (() => {
@@ -461,21 +494,37 @@ export default function Profile() {
 
             {/* Equipo (admin) */}
             {tab === 'equipo' && user?.is_staff && (
-              allReservations.length === 0
-                ? <Empty text="No hay reservas activas en el equipo." />
-                : <div style={s.grid}>
-                    {allReservations.map(v => (
-                      <VideoCard key={v.id} video={v}
-                        badge={{ color: '#f59e0b', label: v.reservado_por || 'RESERVADO' }}
-                        actions={
-                          <button disabled={liberando === v.id} onClick={() => handleLiberar(v.id)}
-                            style={{ ...s.btnGhost, width: '100%', justifyContent: 'center' }}>
-                            <Unlock size={13} /> {liberando === v.id ? '...' : 'Liberar reserva'}
-                          </button>
-                        }
-                      />
-                    ))}
-                  </div>
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                  <button disabled={asignando} onClick={handleAsignarCenso} style={{
+                    padding: '10px 22px', background: '#5b8def', color: '#000', border: 'none',
+                    borderRadius: '8px', fontWeight: 800, fontSize: '11px', letterSpacing: '1.5px',
+                    cursor: 'pointer', opacity: asignando ? 0.6 : 1,
+                  }}>
+                    {asignando ? 'REPARTIENDO...' : '⚖ REPARTIR CENSO RESTANTE ENTRE EL EQUIPO'}
+                  </button>
+                  {asignResult && (
+                    <span style={{ fontSize: '12px', color: '#4caf7d' }}>
+                      ✓ {asignResult.asignados} videos repartidos — {Object.entries(asignResult.detalle).map(([m, n]) => `${m}: ${n}`).join(' · ')}
+                    </span>
+                  )}
+                </div>
+                {allReservations.length === 0
+                  ? <Empty text="No hay reservas activas en el equipo." />
+                  : <div style={s.grid}>
+                      {allReservations.map(v => (
+                        <VideoCard key={v.id} video={v}
+                          badge={{ color: '#f59e0b', label: v.reservado_por || 'RESERVADO' }}
+                          actions={
+                            <button disabled={liberando === v.id} onClick={() => handleLiberar(v.id)}
+                              style={{ ...s.btnGhost, width: '100%', justifyContent: 'center' }}>
+                              <Unlock size={13} /> {liberando === v.id ? '...' : 'Liberar reserva'}
+                            </button>
+                          }
+                        />
+                      ))}
+                    </div>}
+              </>
             )}
           </main>
 

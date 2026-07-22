@@ -1488,6 +1488,41 @@ class MarcarEstilizadoView(APIView):
         return Response({'ok': True, 'estado': 'Estilizado'}, status=status.HTTP_200_OK)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class AsignarCensoView(APIView):
+    """Admin: reparte los videos Disponibles del censo entre los miembros del equipo (round-robin)."""
+    permission_classes = []
+
+    def post(self, request):
+        if not (request.user.is_authenticated and request.user.is_staff):
+            return Response({'error': 'Solo admin puede repartir el censo.'}, status=status.HTTP_403_FORBIDDEN)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        members = [
+            (u.first_name or u.username.split('@')[0])
+            for u in User.objects.filter(is_active=True, is_staff=False)
+        ]
+        if not members:
+            return Response({'error': 'No hay miembros de equipo activos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        disponibles = list(
+            VideoMetadata.objects.filter(tipo='censo', estado_censo='Disponible')
+            .order_by('id').values_list('id', flat=True)
+        )
+        if not disponibles:
+            return Response({'ok': True, 'asignados': 0, 'detalle': {}, 'mensaje': 'No hay videos disponibles.'})
+
+        detalle = {m: 0 for m in members}
+        for i, vid_pk in enumerate(disponibles):
+            member = members[i % len(members)]
+            VideoMetadata.objects.filter(pk=vid_pk).update(
+                estado_censo='Reservado', reservado_por=member)
+            detalle[member] += 1
+
+        return Response({'ok': True, 'asignados': len(disponibles), 'detalle': detalle})
+
+
 # Personas que ya no están en la empresa — si se deniega su trabajo se borra y se libera el censo
 FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan'}
 

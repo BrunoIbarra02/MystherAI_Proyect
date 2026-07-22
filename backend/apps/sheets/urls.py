@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     VideoListView, VideoDetailView, FilterOptionsView, AutoRegisterVideoView,
     CensoSummaryView, RegistroSummaryView, SyncFromSheetsView, ExtractMetadataView,
-    ReservarVideoView, LiberarVideoView, MarcarEstilizadoView,
+    ReservarVideoView, LiberarVideoView, MarcarEstilizadoView, AsignarCensoView,
     AprobarVideoView, DenegarVideoView, GradioErrorView,
 )
 
@@ -12,6 +12,7 @@ urlpatterns = [
     path('videos/<int:pk>/reservar/', ReservarVideoView.as_view(), name='video-reservar'),
     path('videos/<int:pk>/liberar/', LiberarVideoView.as_view(), name='video-liberar'),
     path('videos/<int:pk>/estilizado/', MarcarEstilizadoView.as_view(), name='video-estilizado'),
+    path('asignar-censo/', AsignarCensoView.as_view(), name='asignar-censo'),
     path('videos/<int:pk>/aprobar/', AprobarVideoView.as_view(), name='video-aprobar'),
     path('videos/<int:pk>/denegar/', DenegarVideoView.as_view(), name='video-denegar'),
     path('filter-options/', FilterOptionsView.as_view(), name='filter-options'),
