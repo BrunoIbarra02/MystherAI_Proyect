@@ -1,219 +1,103 @@
-﻿# MystherAI / Hechicer.ia – WaveSpeed Tool
+# MystherAI
 
-Proyecto interno de Hechicer.ia para una herramienta de texturizado y edición de video basada en WaveSpeed, con:
+Herramienta interna para transformar los videos del Censo en versiones estilizadas (anime, cartoon, cyberpunk, etc.) usando WaveSpeed, con flujo de reserva/revisión de trabajo en equipo.
 
-- Backend seguro en Django (login, API).
-- Interfaz web en React + Vite.
-- Herramienta visual en Gradio (5 pestañas de workflow, similar al Colab original).
-- Soporte para manejo de API Key de WaveSpeed y acceso rápido a Google Sheets (Censo, Registro).
+## Arquitectura
 
---------------------------------------------------
-1. Arquitectura
+Monorepo con 3 partes, empaquetadas en **un solo contenedor Docker**:
 
-Repositorio monorepo con 3 partes principales:
+```
+WEB/
+  backend/          Django (API REST, login, modelos, admin)
+  frontend/         React + Vite (dashboard, censo, registro, estadísticas)
+  gradio-service/    Gradio (pipeline de estilizado con WaveSpeed)
+```
 
-hechicer-web/
-  backend/         -> Django (API, login, validación de API keys, etc.)
-  frontend/        -> React + Vite (login, dashboard, integración con herramienta)
-  gradio-service/  -> Gradio + WaveSpeed (herramienta de texturizado/edición)
+En producción, un único contenedor ECS corre **dos procesos**:
+- `gunicorn` sirviendo Django (API + el build de React como estáticos) en el puerto `8080`
+- `gradio-service/app.py` corriendo Gradio en el puerto `7860`
 
---------------------------------------------------
-2. Backend (Django)
+Ver `Dockerfile` — el build compila el frontend, copia backend + gradio-service, y el `CMD` arranca ambos procesos con `&`.
 
-Versiones:
-- Django 4.2.11
-- Python 3.11
+## Flujo de trabajo (producto)
 
-Funciones principales:
-- Autenticación de usuarios con POST /api/auth/login/
-- Validación de formato de API key de WaveSpeed con POST /api/tool/validate-key/
-- Preparado para:
-  - apps/users               (modelo de usuario extendido, campo api_key_wavespeed)
-  - apps/sheets              (Google Sheets)
-  - apps/gradio_integration  (conexión con lógica de IA)
+1. **Censo**: catálogo de videos originales disponibles para estilizar (`estado_censo`: Disponible / Reservado / Estilizado).
+2. Un miembro del equipo **reserva** un video del censo (o el admin reparte el censo restante entre el equipo desde `/profile` → "Reservas Equipo" → **Repartir censo**).
+3. El miembro abre el video reservado en **Gradio** (botón "Abrir en Gradio" — pasa `video_url`, `usuario` y `video_id` por query params).
+4. Pipeline en Gradio (`gradio-service/app.py`), 4 pasos:
+   - **01 CARGAR** — sube o pega la URL del video, analiza frames, captura un fotograma.
+   - **02 EDITAR** (opcional) — recorta el segmento a usar.
+   - **03 IMAGEN** — estiliza el fotograma con un modelo I2I (Nano Banana, Hunyuan). El prompt de estilo elegido aquí se usa también en el paso 04.
+   - **04 V2V** — genera el video estilizado (WAN 2.1 480p rápido, o Kling O3 Pro alta calidad) y lo guarda en el **Registro** con un solo botón (usa automáticamente el `video_id`, estilo y prompts del pipeline).
+5. El registro queda **Pendiente** de revisión. El admin lo aprueba o deniega desde `/profile` → "Estilizados Equipo", donde ve el video original y el estilizado lado a lado.
+   - Si se deniega el trabajo de un ex-empleado (ver `FORMER_EMPLOYEES` en `backend/apps/sheets/views.py`), el registro se borra automáticamente y el video de censo vuelve a estar Disponible.
 
-Estructura general:
+## Desarrollo local
 
-backend/
-  apps/
-    authentication/
-    users/
-    sheets/
-    gradio_integration/
-  config/
-    settings.py
-    urls.py
-  manage.py
-
-Arranque local (ejemplo en PowerShell):
-
+**Backend:**
+```powershell
 cd backend
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 python -m venv venv
 ..\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py setup_users     # crea las cuentas del equipo (ver ACCOUNTS en el comando)
+python manage.py runserver       # http://127.0.0.1:8000
+```
 
-python manage.py runserver
-# Servidor: http://127.0.0.1:8000
-
---------------------------------------------------
-3. Frontend (React + Vite)
-
-Interfaz de usuario:
-
-- Login profesional:
-  - Usa POST /api/auth/login/ contra Django.
-  - Muestra error si las credenciales no son válidas.
-
-- Dashboard:
-  - Tarjetas principales:
-    - Censo         -> abre Google Sheet de Censo en pestaña nueva.
-    - Registro Mateo-> abre Google Sheet de Registro en pestaña nueva.
-    - Herramienta   -> navega a la pantalla de la herramienta IA.
-
-- Pantalla Herramienta:
-  - Muestra un modal que pide API key de WaveSpeed al usuario.
-  - Llama a /api/tool/validate-key/ para validar el formato de la API key.
-  - Si la validación pasa, se muestra un iframe que embebe el servicio de Gradio (http://localhost:7860).
-
-Arranque local:
-
+**Frontend:**
+```powershell
 cd frontend
-python -m venv venv
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-..\venv\Scripts\Activate.ps1
-rm -r -force node_modules, package-lock.json
-npm config set strict-ssl false
-npm install      (solo la primera vez)
-npm run dev      (servidor en http://localhost:5173)
+npm install
+npm run dev                      # http://localhost:5173
+```
 
---------------------------------------------------
-4. Gradio Service (WaveSpeed Tool)
-
-Servicio independiente con Gradio. Reproduce el workflow del Colab original:
-
-Pestañas principales:
-
-1) Selector de Frames:
-   - Cargar un video por ruta local.
-   - Analizar total de frames.
-   - Ver frames con un slider.
-   - Capturar frames como imágenes y guardarlas en outputs/01_CAPTURAS/.
-
-2) Estilo de Imagen (z-image/turbo):
-   - Tomar una imagen (ruta local o salida del selector).
-   - Aplicar un prompt de estilo (lego, ghibli, cinematic, etc.).
-   - Slider de Imaginación (bajo = más fiel, alto = más creativo).
-   - Guardar imágenes estilizadas en outputs/02_ESTILIZADOS/.
-
-3) Video-to-Video (WAN 2.1 v2v-720p):
-   - Cargar video base (ruta local).
-   - Prompt de transformación.
-   - Duración del video y nivel de imaginación.
-   - Imágenes de referencia opcionales.
-   - Guardar videos transformados en outputs/04_TRANSFORMACIONES/.
-
-4) Kling v3.0 (image-to-video):
-   - Imagen original (ruta local o URL).
-   - Prompt de movimiento.
-   - Duración del video y referencias opcionales.
-   - Guardar videos finales en outputs/03_VIDEOS_FINALES/.
-
-5) Cortar / Unir Video:
-   - Cortar segmentos de video con ffmpeg.
-   - Unir hasta 3 videos en uno solo.
-   - Guardar resultados en outputs/03_VIDEOS_FINALES/.
-
-API key de WaveSpeed:
-
-- El servicio Gradio usa una API key de empresa leída desde gradio-service/.env:
-
-  WAVESPEED_API_KEY=TU_API_KEY_REAL_AQUI
-
-- En app.py se crea el cliente wavespeed.Client(api_key=MY_KEY) y se usan los modelos:
-  - wavespeed-ai/z-image/turbo
-  - wavespeed-ai/wan-2.1/v2v-720p
-  - kwaivgi/kling-v3.0-std/image-to-video
-
-Arranque local:
-
+**Gradio:**
+```powershell
 cd gradio-service
-python app.py   (servidor Gradio en http://127.0.0.1:7860)
+pip install -r requirements.txt
+python app.py                    # http://127.0.0.1:7860
+```
 
-El frontend embebe este servicio dentro de la ruta /herramienta.
+Variables de entorno: copiar `.env.template` a `.env` y rellenar los valores reales (nunca commitear `.env`, ya está en `.gitignore`).
 
---------------------------------------------------
-5. Flujo de uso (local)
+## Seguridad — API Key de WaveSpeed
 
-1) Backend (Django):
+**Regla estricta, no negociable:**
+- La API key de WaveSpeed **solo** existe como variable de entorno en ECS (`WAVESPEED_API_KEY`). Nunca se hardcodea en código, nunca se commitea.
+- `gradio-service/app.py` la lee así: `DEFAULT_KEY = os.environ.get("WAVESPEED_API_KEY", "")`.
+- La key **nunca** se expone al frontend/navegador — todas las llamadas a WaveSpeed ocurren server-side en Gradio.
+- Si alguna vez ves una key hardcodeada en un `.py`, es un bug de seguridad — repórtalo y quítala inmediatamente.
 
-   cd backend
-   ..\venv\Scripts\Activate.ps1
-   python manage.py runserver
-   # http://127.0.0.1:8000
+## Despliegue (ECS)
 
-2) Frontend (React):
+**Regla crítica**: nunca usar el tag `:latest` + `--force-new-deployment` para desplegar. ECS puede reutilizar la imagen en caché y los cambios no se reflejan en producción.
 
-   cd frontend
-   ..\venv\Scripts\Activate.ps1   (opcional)
-   npm run dev                   # http://localhost:5173
+Flujo correcto:
+```powershell
+$TAG = (git rev-parse --short HEAD)
+docker build -t mysther-ai .
+docker tag mysther-ai:latest 806116532041.dkr.ecr.eu-central-1.amazonaws.com/mysther-ai:$TAG
+docker push 806116532041.dkr.ecr.eu-central-1.amazonaws.com/mysther-ai:$TAG
+# Luego: registrar nueva task definition con esa imagen + update-service (ver historial de despliegues)
+```
 
-3) Gradio / Herramienta:
+Siempre un **tag único** (hash de git) + **nueva revisión de task definition**. Esto garantiza que ECS descargue la imagen nueva.
 
-   cd gradio-service
-   ..\venv\Scripts\Activate.ps1   (opcional)
-   python app.py                 # http://127.0.0.1:7860
+## Equipo y roles
 
-4) En el navegador:
-   - Ir a http://localhost:5173
-   - Login (por ejemplo: admin / admin123).
-   - Usar Dashboard:
-     - Censo / Registro -> abren Google Sheets específicas.
-     - Herramienta -> pide API key de WaveSpeed, valida formato y abre Gradio.
+- **Admin (staff)**: aprueba/deniega registros, reparte el censo, gestiona cuentas — actualmente Bruno.
+- **Miembros del equipo**: reservan videos del censo, los estilizan en Gradio, ven su propio historial en "Estilizados". Solo pueden editar/borrar sus propias entradas de registro (no las de otros).
+- Cuentas de ex-empleados se desactivan (`is_active=False`) en `backend/apps/authentication/management/commands/setup_users.py`, no se borran — así se conserva el histórico de su trabajo.
 
---------------------------------------------------
-6. Outputs locales
+## Problemas conocidos / en validación
 
-Los resultados de la herramienta se guardan en:
+- **Miniaturas rotas en registros antiguos**: algunos registros muestran el video/imagen en blanco. Hipótesis: las URLs de salida de WaveSpeed (CloudFront) pueden ser temporales y expirar — no hay re-subida a almacenamiento permanente (S3/Drive) al momento de guardar. Usar el filtro **"⚠ SIN VIDEO"** en "Estilizados Equipo" (`/profile`) para ubicar estos registros.
+- Ver Issues del repositorio para el resto de tareas activas.
 
-gradio-service/outputs/
-  01_CAPTURAS/         -> Frames capturados
-  02_ESTILIZADOS/      -> Imágenes estilizadas
-  03_VIDEOS_FINALES/   -> Videos finales, cortes, uniones, kling
-  04_TRANSFORMACIONES/ -> Videos transformados (v2v)
-  temp/                -> Archivos temporales
+## Stack
 
-En producción, estos outputs pueden migrarse a:
-- Google Cloud Storage (recomendado), o
-- Google Drive (vía API), según la arquitectura final.
-
---------------------------------------------------
-7. Roadmap
-
-Fase 2 – API key por usuario (real):
-- Django debe usar user.api_key_wavespeed para crear wavespeed.Client(...) por usuario.
-- Mover los cl.run(...) al backend y exponer endpoints REST para el frontend.
-
-Fase 3 – Despliegue en la nube:
-- Dockerizar backend y gradio-service.
-- Subir imágenes a Google Artifact Registry.
-- Desplegar en Cloud Run.
-- Configurar subdominio (por ejemplo tool.hechicer.ia) y HTTPS automático.
-
-Fase 4 – Integración Sheets:
-- apps/sheets conectado a Censo y Registro Mateo:
-  - Lectura de filas.
-  - Escritura/actualización desde la web.
-
---------------------------------------------------
-8. Requisitos
-
-- Python 3.11
-- Node.js 18+
-- Git
-- ffmpeg instalado y disponible en el PATH del sistema
-- Cuenta y API key de WaveSpeed
+- Backend: Django 4.2, Python 3.12
+- Frontend: React + Vite
+- Gradio: pipeline de estilizado (WaveSpeed API)
+- Infra: Docker, AWS ECR + ECS (`eu-central-1`), cluster `mysther-ai-cluster`

@@ -19,6 +19,9 @@ build/
 # Salidas locales
 outputs/
 
+# Scratch: dumps de task definition de ECS (pueden contener env vars en texto plano)
+new_taskdef*.json
+
 # Claude Code
 .claude/
 
