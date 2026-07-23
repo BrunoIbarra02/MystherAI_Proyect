@@ -1488,31 +1488,39 @@ class MarcarEstilizadoView(APIView):
         return Response({'ok': True, 'estado': 'Estilizado'}, status=status.HTTP_200_OK)
 
 
+# Equipo actual que estiliza (debe reflejar los no-staff en setup_users.ACCOUNTS).
+# Bruno es admin y no estiliza; cualquier otro nombre en la BD (ex-empleados, cuentas
+# fantasma) se considera inválido y sus reservas se reclaman al correr AsignarCensoView.
+EQUIPO_ACTUAL = ['Fabio', 'Katty', 'Wilson', 'Olenka', 'Rodrigo']
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class AsignarCensoView(APIView):
-    """Admin: reparte los videos Disponibles del censo entre los miembros del equipo (round-robin)."""
+    """Admin: reclama reservas que no pertenecen al equipo actual (ex-empleados, admin,
+    cuentas fantasma) y reparte todo lo Disponible entre el equipo actual (round-robin)."""
     permission_classes = []
 
     def post(self, request):
         if not (request.user.is_authenticated and request.user.is_staff):
             return Response({'error': 'Solo admin puede repartir el censo.'}, status=status.HTTP_403_FORBIDDEN)
 
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        members = [
-            (u.first_name or u.username.split('@')[0])
-            for u in User.objects.filter(is_active=True, is_staff=False)
-        ]
+        members = EQUIPO_ACTUAL
         if not members:
-            return Response({'error': 'No hay miembros de equipo activos.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'No hay miembros de equipo configurados.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 1. Reclamar reservas que no pertenecen a nadie del equipo actual
+        q_equipo = Q()
+        for m in members:
+            q_equipo |= Q(reservado_por__iexact=m)
+        reclamados = VideoMetadata.objects.filter(
+            tipo='censo', estado_censo='Reservado'
+        ).exclude(q_equipo).update(estado_censo='Disponible', reservado_por=None)
+
+        # 2. Repartir todo lo Disponible entre el equipo actual
         disponibles = list(
             VideoMetadata.objects.filter(tipo='censo', estado_censo='Disponible')
             .order_by('id').values_list('id', flat=True)
         )
-        if not disponibles:
-            return Response({'ok': True, 'asignados': 0, 'detalle': {}, 'mensaje': 'No hay videos disponibles.'})
-
         detalle = {m: 0 for m in members}
         for i, vid_pk in enumerate(disponibles):
             member = members[i % len(members)]
@@ -1520,11 +1528,13 @@ class AsignarCensoView(APIView):
                 estado_censo='Reservado', reservado_por=member)
             detalle[member] += 1
 
-        return Response({'ok': True, 'asignados': len(disponibles), 'detalle': detalle})
+        return Response({
+            'ok': True, 'reclamados': reclamados, 'asignados': len(disponibles), 'detalle': detalle,
+        })
 
 
 # Personas que ya no están en la empresa — si se deniega su trabajo se borra y se libera el censo
-FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan', 'jose maria'}
+FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan', 'jose maria', 'omar'}
 
 
 @method_decorator(csrf_exempt, name='dispatch')

@@ -98,7 +98,7 @@ export default function Profile() {
   const handleLogout = async () => { await logout(); navigate('/'); };
 
   const handleAsignarCenso = async () => {
-    if (!window.confirm('¿Repartir TODOS los videos disponibles del censo entre los miembros del equipo?')) return;
+    if (!window.confirm('Esto liberará reservas que no pertenezcan al equipo actual (Fabio, Katty, Wilson, Olenka, Rodrigo) y repartirá todo lo disponible entre ellos. ¿Continuar?')) return;
     setAsignando(true);
     try {
       const r = await api.post('/sheets/asignar-censo/');
@@ -536,7 +536,8 @@ export default function Profile() {
                   </button>
                   {asignResult && (
                     <span style={{ fontSize: '12px', color: '#4caf7d' }}>
-                      ✓ {asignResult.asignados} videos repartidos — {Object.entries(asignResult.detalle).map(([m, n]) => `${m}: ${n}`).join(' · ')}
+                      ✓ {asignResult.reclamados > 0 && `${asignResult.reclamados} reservas inválidas liberadas · `}
+                      {asignResult.asignados} videos repartidos — {Object.entries(asignResult.detalle).map(([m, n]) => `${m}: ${n}`).join(' · ')}
                     </span>
                   )}
                 </div>
