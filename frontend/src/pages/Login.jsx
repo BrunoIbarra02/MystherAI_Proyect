@@ -40,7 +40,18 @@ const Login = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError('Correo o contraseña incorrectos');
+      // Solo un 401 significa credenciales malas. Un 500/503 o un fallo de red
+      // significa que el servicio está caído — decir "contraseña incorrecta"
+      // ahí manda al equipo a buscar el problema donde no está.
+      const status = err.response?.status;
+      if (status === 401) {
+        setError('Correo o contraseña incorrectos');
+      } else if (!err.response) {
+        setError('No hay conexión con el servidor. Reintenta en unos minutos.');
+      } else {
+        setError(err.response.data?.error
+          || 'El servicio no está disponible ahora mismo. No es tu contraseña — avisa al administrador.');
+      }
     } finally {
       setLoading(false);
     }

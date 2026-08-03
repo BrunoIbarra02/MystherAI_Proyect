@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q
@@ -7,12 +7,51 @@ from django.utils.decorators import method_decorator
 from .models import VideoMetadata, GradioError
 from .serializers import VideoMetadataSerializer
 
+
+# ── Permisos ────────────────────────────────────────────────────────────────
+
+# El servicio de Gradio corre en el MISMO contenedor y guarda los estilizados
+# llamando a http://localhost:8080/api/sheets/videos/ sin sesión de usuario.
+# Sin esta excepción, cerrar los permisos rompe el guardado automático.
+LOCALHOST = {'127.0.0.1', '::1', 'localhost'}
+
+
+def es_servicio_interno(request):
+    return (request.META.get('REMOTE_ADDR') or '') in LOCALHOST
+
+
+class PuedeEscribirVideos(permissions.BasePermission):
+    """Lectura para cualquiera; escritura solo para usuarios con sesión
+    o para el servicio interno de Gradio (localhost)."""
+
+    message = 'Necesitas iniciar sesión para modificar videos.'
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return bool(request.user and request.user.is_authenticated) or es_servicio_interno(request)
+
+
+class EsAdmin(permissions.BasePermission):
+    """Solo staff. Para acciones que afectan al trabajo de todo el equipo."""
+
+    message = 'Solo un administrador puede realizar esta acción.'
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+
+
 # ==========================================
 # VISTAS ORIGINALES (RODRIGO)
 # ==========================================
 
+# csrf_exempt para que el servicio de Gradio (sin cookies) pueda dar de alta los
+# estilizados. Los usuarios del navegador siguen pasando el CSRF de DRF vía
+# SessionAuthentication, y el permiso de arriba es quien decide de verdad.
+@method_decorator(csrf_exempt, name='dispatch')
 class VideoListView(generics.ListCreateAPIView):
     serializer_class = VideoMetadataSerializer
+    permission_classes = [PuedeEscribirVideos]
     def get_queryset(self):
         queryset = VideoMetadata.objects.all()
         tipo = self.request.query_params.get('tipo')
@@ -35,9 +74,11 @@ class VideoListView(generics.ListCreateAPIView):
         return queryset.order_by("-id")
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = VideoMetadata.objects.all()
     serializer_class = VideoMetadataSerializer
+    permission_classes = [PuedeEscribirVideos]
 
 
 class FilterOptionsView(APIView):
@@ -75,6 +116,8 @@ class FilterOptionsView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AutoRegisterVideoView(APIView):
+    permission_classes = [PuedeEscribirVideos]
+
     def post(self, request):
         serializer = VideoMetadataSerializer(data=request.data)
         if serializer.is_valid():
@@ -1218,7 +1261,8 @@ class RegistroSummaryView(APIView):
 
 
 class SyncFromSheetsView(APIView):
-    permission_classes = []
+    # Reescribe el Excel local del servidor: solo admin.
+    permission_classes = [EsAdmin]
 
     def post(self, request):
         import requests as req_lib
@@ -1336,7 +1380,8 @@ class SyncFromSheetsView(APIView):
         })
 
 class ExtractMetadataView(APIView):
-    permission_classes = []
+    # El POST lanza un subproceso en el servidor: solo admin.
+    permission_classes = [EsAdmin]
 
     def get(self, request):
         import os, openpyxl
@@ -1403,11 +1448,14 @@ class ExtractMetadataView(APIView):
 
 # ── SISTEMA DE RESERVAS (Censo) ──────────────────────────────────────────────
 
-@method_decorator(csrf_exempt, name='dispatch')
 class ReservarVideoView(APIView):
-    """Reserva un video de Censo para estilización."""
-    permission_classes = []
-    authentication_classes = []
+    """Reserva un video de Censo para estilización.
+
+    OJO: no vaciar authentication_classes. Al hacerlo request.user era siempre
+    anónimo, así que la identidad se cogía del body — cualquiera podía reservar
+    en nombre de otro, y sin ese campo la reserva fallaba con un 400.
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         try:
@@ -1425,11 +1473,8 @@ class ReservarVideoView(APIView):
             return Response({'error': 'Este video ya fue estilizado.', 'estado': estado_actual},
                             status=status.HTTP_409_CONFLICT)
 
-        # Resolve who is reserving: logged-in user takes priority
-        if request.user.is_authenticated:
-            nombre = request.user.first_name or request.user.username.split('@')[0]
-        else:
-            nombre = (request.data.get('usuario') or '').strip()
+        # La identidad sale SIEMPRE de la sesión, nunca del body.
+        nombre = request.user.first_name or request.user.username.split('@')[0]
         if not nombre:
             return Response({'error': 'No se pudo identificar al usuario.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1444,7 +1489,7 @@ class ReservarVideoView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class LiberarVideoView(APIView):
     """Libera la reserva de un video. Admin puede liberar cualquiera."""
-    permission_classes = []
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         try:
@@ -1455,15 +1500,14 @@ class LiberarVideoView(APIView):
         if video.estado_censo != 'Reservado':
             return Response({'error': 'El video no está reservado.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        is_admin = request.user.is_authenticated and request.user.is_staff
-        if not is_admin:
-            # Non-admin: can only release their own reservation
-            if request.user.is_authenticated:
-                nombre = request.user.first_name or request.user.username.split('@')[0]
-            else:
-                nombre = (request.data.get('usuario') or '').strip()
-            if video.reservado_por.lower() != nombre.lower():
-                return Response({'error': f'Solo {video.reservado_por} o un admin puede liberar esta reserva.'},
+        if not request.user.is_staff:
+            # Un miembro solo puede liberar su propia reserva.
+            nombre = request.user.first_name or request.user.username.split('@')[0]
+            # reservado_por puede venir a None en filas heredadas: sin este guardia
+            # el .lower() reventaba con un 500.
+            dueño = (video.reservado_por or '').strip()
+            if dueño.lower() != nombre.lower():
+                return Response({'error': f'Solo {dueño or "su dueño"} o un admin puede liberar esta reserva.'},
                                 status=status.HTTP_403_FORBIDDEN)
 
         video.estado_censo = 'Disponible'
@@ -1475,7 +1519,7 @@ class LiberarVideoView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class MarcarEstilizadoView(APIView):
     """Marca un video de Censo como Estilizado (llamado automáticamente al guardar en Registro)."""
-    permission_classes = []
+    permission_classes = [PuedeEscribirVideos]
 
     def post(self, request, pk):
         try:
@@ -1498,12 +1542,9 @@ EQUIPO_ACTUAL = ['Fabio', 'Katty', 'Wilson', 'Olenka', 'Rodrigo']
 class AsignarCensoView(APIView):
     """Admin: reclama reservas que no pertenecen al equipo actual (ex-empleados, admin,
     cuentas fantasma) y reparte todo lo Disponible entre el equipo actual (round-robin)."""
-    permission_classes = []
+    permission_classes = [EsAdmin]
 
     def post(self, request):
-        if not (request.user.is_authenticated and request.user.is_staff):
-            return Response({'error': 'Solo admin puede repartir el censo.'}, status=status.HTTP_403_FORBIDDEN)
-
         members = EQUIPO_ACTUAL
         if not members:
             return Response({'error': 'No hay miembros de equipo configurados.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1537,11 +1578,9 @@ class AsignarCensoView(APIView):
 FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan', 'jose maria', 'omar'}
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class AprobarVideoView(APIView):
     """Admin aprueba un video de Registro."""
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [EsAdmin]
 
     def post(self, request, pk):
         try:
@@ -1557,14 +1596,16 @@ class AprobarVideoView(APIView):
         return Response({'ok': True, 'estado_revision': 'Aprobado'}, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class DenegarVideoView(APIView):
     """Admin deniega un video de Registro.
-    Ex-empleados: borra el registro y libera el censo para que otro lo tome.
-    Empleados actuales: marca como Rechazado y el censo queda Reservado para reintento.
+
+    Nunca borra. Antes, si el autor estaba en FORMER_EMPLOYEES se hacía
+    registro.delete(): un borrado permanente que además el siguiente sync_sheets
+    volvía a crear desde el Sheets, así que las entradas desaparecían y
+    reaparecían solas. Ahora se marca Rechazado y, si el autor ya no está en el
+    equipo, se libera el video de censo para que otro pueda retomarlo.
     """
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [EsAdmin]
 
     def post(self, request, pk):
         try:
@@ -1576,30 +1617,30 @@ class DenegarVideoView(APIView):
         usuario    = (registro.usuario or '').strip().lower()
         is_former  = usuario in FORMER_EMPLOYEES
 
+        registro.estado_revision     = 'Rechazado'
+        registro.comentario_revision = comentario or None
+        registro.aceptado = 'No'
+        registro.save(update_fields=['estado_revision', 'comentario_revision', 'aceptado'])
+
+        censo_liberado = 0
         if is_former:
-            # Liberar el video de censo correspondiente
-            censo_qs = VideoMetadata.objects.filter(
+            # El autor ya no está en el equipo: el video vuelve al pool.
+            censo_liberado = VideoMetadata.objects.filter(
                 tipo='censo',
             ).filter(
                 Q(video_id=registro.video_id) |
                 Q(id_video_equipo=registro.video_id)
-            )
-            censo_qs.update(estado_censo='Disponible', reservado_por=None)
-            registro.delete()
-            return Response({'ok': True, 'accion': 'eliminado', 'censo_liberado': censo_qs.count()}, status=status.HTTP_200_OK)
-        else:
-            registro.estado_revision    = 'Rechazado'
-            registro.comentario_revision = comentario or None
-            registro.aceptado = 'No'
-            registro.save(update_fields=['estado_revision', 'comentario_revision', 'aceptado'])
-            return Response({'ok': True, 'estado_revision': 'Rechazado'}, status=status.HTTP_200_OK)
+            ).update(estado_censo='Disponible', reservado_por=None)
+
+        return Response({'ok': True, 'estado_revision': 'Rechazado',
+                         'censo_liberado': censo_liberado}, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GradioErrorView(APIView):
-    """Log and retrieve Gradio pipeline errors per team member."""
-    permission_classes = []
-    authentication_classes = []
+    """Log and retrieve Gradio pipeline errors per team member.
+    Escritura desde el servicio interno de Gradio; lectura para el equipo."""
+    permission_classes = [PuedeEscribirVideos]
 
     def post(self, request):
         GradioError.objects.create(

@@ -1,0 +1,37 @@
+name: Keep-alive base de datos
+
+# Supabase pausa los proyectos free-tier tras 7 días SIN ACTIVIDAD y la web se
+# cae entera (todo lo que consulta la BD devuelve 500). Este job hace una
+# consulta real cada día para que el proyecto nunca llegue a considerarse inactivo.
+#
+# Esto es un parche. La solución definitiva es pasar Supabase a plan Pro.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # todos los días a las 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar /api/auth/health/ (hace un SELECT 1 contra la BD)
+        run: |
+          BACKEND="${{ vars.BACKEND_URL }}"
+          if [ -z "$BACKEND" ]; then
+            echo "::error::Falta la variable de repositorio BACKEND_URL (Settings → Variables)."
+            exit 1
+          fi
+
+          RESP=$(curl -s -m 60 -w "\n%{http_code}" "$BACKEND/api/auth/health/") || true
+          CODE=$(echo "$RESP" | tail -n1)
+          BODY=$(echo "$RESP" | sed '$d')
+
+          echo "HTTP $CODE"
+          echo "$BODY"
+
+          if [ "$CODE" != "200" ]; then
+            echo "::error::La base de datos no responde (HTTP $CODE). Revisa si Supabase pausó el proyecto: https://supabase.com/dashboard"
+            exit 1
+          fi
+          echo "Base de datos viva."

@@ -1,65 +1,123 @@
+"""
+Única fuente de verdad para las cuentas del equipo.
+
+Antes había DOS comandos (`setup_users` y `users.create_accounts`) con listas de
+emails distintas, y cada Dockerfile llamaba a uno. Resultado: el email con el que
+entrabas dependía de qué imagen estuviera desplegada, y `create_accounts` además
+reseteaba la contraseña de TODOS en cada arranque del contenedor.
+
+Reglas de este comando:
+  - NUNCA toca la contraseña de un usuario que ya existe (salvo --reset-password).
+  - Los emails antiguos siguen funcionando: ver EMAILS_ANTIGUOS en backends.py.
+  - Es idempotente: se puede ejecutar en cada despliegue sin efectos sorpresa.
+
+Uso:
+    python manage.py setup_users
+    python manage.py setup_users --reset-password fabio.ramos.reyes@gmail.com
+"""
+import os
+
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
 
+# (email canónico, nombre, is_staff, is_superuser)
 ACCOUNTS = [
-    # (email, first_name, password, is_staff, is_superuser)
-    ('brunoibarraadame@gmail.com', 'Bruno',  'Mystherai2026', True,  True),
-    ('fabio.ramos.reyes@gmail.com', 'Fabio', 'Mystherai2026', False, False),
-    ('kathysp99@gmail.com',        'Katty',  'Mystherai2026', False, False),
-    ('wilson@mystherai.com',       'Wilson', 'Mystherai2026', False, False),
-    ('olenka@mystherai.com',       'Olenka', 'Mystherai2026', False, False),
-    ('rodrigo@mystherai.com',      'Rodrigo',  'Mystherai2026', False, False),
+    ('brunoibarraadame@gmail.com',  'Bruno',   True,  True),
+    ('fabio.ramos.reyes@gmail.com', 'Fabio',   False, False),
+    ('kathysp99@gmail.com',         'Katty',   False, False),
+    ('wilson@mystherai.com',        'Wilson',  False, False),
+    ('olenka@mystherai.com',        'Olenka',  False, False),
+    ('rodrigo@mystherai.com',       'Rodrigo', False, False),
 ]
 
-# Ex-empleados: se desactivan (no se borran, para conservar el histórico de sus registros)
+# Ex-empleados: se desactivan, no se borran, para conservar su histórico.
 DEACTIVATED = [
     'chema.lezuza@gmail.com',  # Jose Maria — ya no está en el equipo
 ]
 
+# Contraseña inicial SOLO para cuentas nuevas. Se puede fijar por entorno.
+DEFAULT_PASSWORD = os.getenv('INITIAL_USER_PASSWORD', 'Mystherai2026')
+
 
 class Command(BaseCommand):
-    help = 'Crea / sincroniza cuentas de usuario y libera reservas de admin'
+    help = 'Crea/sincroniza las cuentas del equipo sin pisar contraseñas existentes'
 
-    def handle(self, *args, **kwargs):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--reset-password',
+            metavar='EMAIL',
+            help='Restablece la contraseña inicial de UNA cuenta concreta (acción manual)',
+        )
+
+    def handle(self, *args, **options):
         User = get_user_model()
 
-        for email, first_name, password, is_staff, is_superuser in ACCOUNTS:
-            user, created = User.objects.get_or_create(username=email, defaults={
-                'email':        email,
-                'first_name':   first_name,
-                'is_staff':     is_staff,
-                'is_superuser': is_superuser,
-            })
-            if created:
-                user.set_password(password)
+        reset_email = (options.get('reset_password') or '').strip().lower()
+        if reset_email:
+            user = User.objects.filter(username__iexact=reset_email).first()
+            if not user:
+                self.stderr.write(f'No existe ninguna cuenta con {reset_email}')
+                return
+            user.set_password(DEFAULT_PASSWORD)
+            user.save(update_fields=['password'])
+            self.stdout.write(self.style.SUCCESS(f'Contraseña restablecida para {reset_email}'))
+            return
+
+        for email, first_name, is_staff, is_superuser in ACCOUNTS:
+            user = User.objects.filter(username__iexact=email).first()
+
+            if user is None:
+                user = User.objects.create(
+                    username=email, email=email, first_name=first_name,
+                    is_staff=is_staff, is_superuser=is_superuser, is_active=True,
+                )
+                user.set_password(DEFAULT_PASSWORD)   # solo al crear
                 user.save()
-                self.stdout.write(f'✓ Creado: {email}')
-            else:
-                # Ensure staff/superuser flags are up to date
-                changed = False
-                if user.is_staff != is_staff or user.is_superuser != is_superuser:
-                    user.is_staff, user.is_superuser = is_staff, is_superuser
-                    changed = True
-                if not user.first_name:
-                    user.first_name = first_name
-                    changed = True
-                if changed:
-                    user.save()
+                self.stdout.write(self.style.SUCCESS(f'Creado: {email}'))
+                continue
 
-        # Desactivar cuentas de ex-empleados
+            # Cuenta existente: sincronizamos metadatos, jamás la contraseña.
+            cambios = []
+            if user.is_staff != is_staff or user.is_superuser != is_superuser:
+                user.is_staff, user.is_superuser = is_staff, is_superuser
+                cambios += ['is_staff', 'is_superuser']
+            if not user.first_name:
+                user.first_name = first_name
+                cambios.append('first_name')
+            if not user.is_active:
+                user.is_active = True
+                cambios.append('is_active')
+            if cambios:
+                user.save(update_fields=cambios)
+                self.stdout.write(f'Actualizado: {email} ({", ".join(cambios)})')
+
         for email in DEACTIVATED:
-            n = User.objects.filter(username=email, is_active=True).update(is_active=False)
+            n = User.objects.filter(username__iexact=email, is_active=True).update(is_active=False)
             if n:
-                self.stdout.write(f'✓ Desactivado: {email}')
+                self.stdout.write(f'Desactivado: {email}')
 
-        # Liberar todas las reservas de Bruno (admin no estiliza)
+        # Aviso de cuentas duplicadas: dos usuarios con el mismo nombre visible
+        # se reparten el trabajo de forma impredecible, porque las reservas se
+        # guardan por nombre en texto libre (reservado_por).
+        nombres = {}
+        for u in User.objects.filter(is_active=True):
+            clave = (u.first_name or u.username.split('@')[0]).strip().lower()
+            nombres.setdefault(clave, []).append(u.username)
+        for nombre, cuentas in nombres.items():
+            if len(cuentas) > 1:
+                self.stdout.write(self.style.WARNING(
+                    f'AVISO: "{nombre}" tiene {len(cuentas)} cuentas activas: {", ".join(cuentas)}. '
+                    f'Su trabajo puede repartirse entre ambas.'
+                ))
+
+        # Liberar reservas del admin (Bruno no estiliza)
         try:
             from apps.sheets.models import VideoMetadata
             freed = VideoMetadata.objects.filter(
                 tipo='censo', estado_censo='Reservado', reservado_por__iexact='Bruno'
             ).update(estado_censo='Disponible', reservado_por=None)
             if freed:
-                self.stdout.write(f'✓ Liberadas {freed} reservas de Bruno')
+                self.stdout.write(f'Liberadas {freed} reservas de Bruno')
         except Exception as e:
-            self.stdout.write(f'⚠ No se pudieron liberar reservas: {e}')
+            self.stdout.write(f'No se pudieron liberar reservas: {e}')

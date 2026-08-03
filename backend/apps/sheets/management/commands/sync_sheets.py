@@ -1,6 +1,7 @@
 import csv, os, io, re
 import requests as req
 import openpyxl
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from apps.sheets.models import VideoMetadata
 
@@ -14,25 +15,48 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.stdout.write("Sincronizando datos (preservando estados de app)...")
 
+        # Contadores: antes los fallos se tragaban con `except Exception: pass`,
+        # así que era imposible saber si se habían sincronizado 400 filas o 4.
+        self.errores = []
+
+        def _upsert(filtro, defaults, etiqueta):
+            """update_or_create tolerante a duplicados, dejando rastro de cada fallo.
+
+            video_id / id_video_equipo NO son únicos en el modelo: si hay duplicados,
+            update_or_create lanza MultipleObjectsReturned. Antes eso silenciaba la
+            fila entera y el video no aparecía nunca en la web.
+            """
+            try:
+                VideoMetadata.objects.update_or_create(defaults=defaults, **filtro)
+                return True
+            except VideoMetadata.MultipleObjectsReturned:
+                # Hay duplicados en BD. No borramos nada: actualizamos el más antiguo
+                # y lo dejamos reportado para poder limpiarlo a mano.
+                ids = list(VideoMetadata.objects.filter(**filtro)
+                           .order_by('id').values_list('id', flat=True))
+                VideoMetadata.objects.filter(pk=ids[0]).update(**defaults)
+                self.errores.append(
+                    f'{etiqueta}: {len(ids)} filas duplicadas en BD (ids {ids}) — actualizada la primera')
+                return True
+            except Exception as e:
+                self.errores.append(f'{etiqueta}: {type(e).__name__} {e}')
+                return False
+
         def safe_upsert_registro(video_id, defaults):
             """Create or update a registro record without touching app-managed fields."""
-            try:
-                VideoMetadata.objects.update_or_create(
-                    tipo='registro', video_id=video_id,
-                    defaults=defaults,
-                )
-            except Exception:
-                pass
+            return _upsert({'tipo': 'registro', 'video_id': video_id}, defaults,
+                           f'registro {video_id}')
 
         def safe_upsert_censo(id_equipo, defaults):
             """Create or update a censo record without touching estado_censo/reservado_por."""
-            try:
-                VideoMetadata.objects.update_or_create(
-                    tipo='censo', id_video_equipo=str(id_equipo),
-                    defaults=defaults,
-                )
-            except Exception:
-                pass
+            id_equipo = str(id_equipo or '').strip()
+            if not id_equipo:
+                # Sin ID de equipo, update_or_create hacía match con la MISMA fila
+                # vacía una y otra vez: N filas del CSV colapsaban en un solo registro.
+                self.errores.append('censo: fila sin ID DE VIDEO EQUIPO — omitida')
+                return False
+            return _upsert({'tipo': 'censo', 'id_video_equipo': id_equipo}, defaults,
+                           f'censo {id_equipo}')
 
         # ---------------------------------------------------------------
         # REGISTRO — leer desde XLSX para preservar hipervínculos de Smart Chips
@@ -129,7 +153,9 @@ class Command(BaseCommand):
 
         except Exception as e:
             self.stdout.write(f"XLSX no disponible ({e}), usando registro.csv local...")
-            registro_path = 'registro.csv'
+            # Ruta absoluta: con la ruta relativa, si el proceso arrancaba desde otro
+            # directorio el archivo "no existía" y no se sincronizaba nada.
+            registro_path = os.path.join(settings.BASE_DIR, 'registro.csv')
             if os.path.exists(registro_path):
                 def get_v(row, *keys):
                     for k in keys:
@@ -166,7 +192,7 @@ class Command(BaseCommand):
         # ---------------------------------------------------------------
         # CENSO — CSV local, preserva estado_censo y estados de app
         # ---------------------------------------------------------------
-        censo_path = 'censo.csv'
+        censo_path = os.path.join(settings.BASE_DIR, 'censo.csv')
         if os.path.exists(censo_path):
             count = 0
             with open(censo_path, mode='r', encoding='utf-8-sig') as f:
@@ -200,4 +226,15 @@ class Command(BaseCommand):
                     count += 1
             self.stdout.write(f"Censo sincronizado: {count} filas.")
         else:
-            self.stdout.write("No se encontro censo.csv")
+            self.stdout.write(self.style.ERROR(f"No se encontro censo.csv en {censo_path}"))
+
+        # Resumen final: si algo se pierde, tiene que verse en los logs del despliegue.
+        if self.errores:
+            self.stdout.write(self.style.WARNING(
+                f"\n{len(self.errores)} filas con problemas durante la sincronizacion:"))
+            for msg in self.errores[:50]:
+                self.stdout.write(f"  - {msg}")
+            if len(self.errores) > 50:
+                self.stdout.write(f"  ... y {len(self.errores) - 50} mas")
+        else:
+            self.stdout.write(self.style.SUCCESS("\nSincronizacion sin errores."))

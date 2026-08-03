@@ -12,9 +12,11 @@ import { useApiKey } from '../context/ApiKeyContext';
 
 const GRADIO_BASE = 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860';
 
+// Mismo criterio que VideoGalleryLayout: con el mínimo de 25 caracteres, IDs de
+// Drive válidos se descartaban y el video no se veía en el perfil pero sí en el censo.
 const extractDriveID = (url) => {
   if (!url) return null;
-  const m = url.match(/(?:file\/d\/|id=|\/folders\/|open\?id=)([a-zA-Z0-9_-]{25,})/);
+  const m = url.match(/(?:file\/d\/|id=|\/folders\/|open\?id=|\/d\/)([a-zA-Z0-9_-]{19,})/);
   return m ? m[1] : null;
 };
 const thumbUrl = (url) => {

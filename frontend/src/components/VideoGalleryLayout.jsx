@@ -7,6 +7,18 @@ import { useUser } from '../context/UserContext';
 
 const GRADIO_BASE = 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860';
 
+// Placeholder local. Antes apuntaba a via.placeholder.com, que dejó de resolver
+// DNS: cada tarjeta sin ID de Drive mostraba una imagen rota en vez del cartel.
+export const PLACEHOLDER_SIN_VIDEO =
+  'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="338" viewBox="0 0 600 338">
+       <rect width="600" height="338" fill="#141414"/>
+       <path d="M275 150l55 32-55 32z" fill="#3a3a3a"/>
+       <text x="300" y="245" fill="#6b6b6b" font-family="system-ui,sans-serif"
+             font-size="22" font-weight="600" text-anchor="middle">SIN VIDEO</text>
+     </svg>`
+  );
+
 const VideoGalleryLayout = ({ tipo, titulo }) => {
   const navigate = useNavigate();
   const { apiKey } = useApiKey();
@@ -42,7 +54,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
   const extractDriveID = useCallback((url) => {
     if (!url || typeof url !== 'string' || url.trim() === '') return null;
-    const match = url.match(/(?:file\/d\/|id=|\/folders\/|open\?id=)([a-zA-Z0-9_-]{25,})/);
+    // El mínimo de 25 caracteres dejaba fuera IDs de Drive perfectamente válidos
+    // y esos videos caían al placeholder. Drive usa IDs desde ~19 caracteres.
+    const match = url.match(/(?:file\/d\/|id=|\/folders\/|open\?id=|\/d\/)([a-zA-Z0-9_-]{19,})/);
     return match ? match[1] : null;
   }, []);
 
@@ -53,7 +67,7 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
 
   const getThumbnailUrl = useCallback((url) => {
     const id = extractDriveID(url);
-    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w600` : "https://via.placeholder.com/600x338?text=NO+VIDEO";
+    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w600` : PLACEHOLDER_SIN_VIDEO;
   }, [extractDriveID]);
 
   const getHighResUrl = useCallback((url) => {

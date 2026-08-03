@@ -12,6 +12,10 @@ module.exports = async function handler(req, res) {
   if (req.headers['content-type'])  forwardHeaders['content-type']  = req.headers['content-type'];
   if (req.headers['cookie'])        forwardHeaders['cookie']         = req.headers['cookie'];
   if (req.headers['x-csrftoken'])   forwardHeaders['x-csrftoken']   = req.headers['x-csrftoken'];
+  // Django compara Origin/Referer contra CSRF_TRUSTED_ORIGINS en peticiones HTTPS.
+  // Sin reenviarlos, todo POST/PUT/DELETE se rechazaba con 403.
+  if (req.headers['origin'])        forwardHeaders['origin']        = req.headers['origin'];
+  if (req.headers['referer'])       forwardHeaders['referer']       = req.headers['referer'];
 
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
   const body = hasBody && req.body ? JSON.stringify(req.body) : undefined;
@@ -24,8 +28,13 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const setCookie = upstream.headers.get('set-cookie');
-  if (setCookie) res.setHeader('Set-Cookie', setCookie);
+  // Django envía DOS cookies en el login (sessionid y csrftoken). Con .get() vienen
+  // concatenadas por comas, y como el atributo Expires también lleva comas el
+  // navegador parseaba basura y se perdía la sesión: parecía "contraseña incorrecta".
+  const cookies = typeof upstream.headers.getSetCookie === 'function'
+    ? upstream.headers.getSetCookie()
+    : (upstream.headers.raw?.()['set-cookie'] || []);
+  if (cookies.length) res.setHeader('Set-Cookie', cookies);
   res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json');
 
   const text = await upstream.text();

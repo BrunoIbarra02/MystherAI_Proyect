@@ -8,7 +8,9 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-key")
-DEBUG = os.getenv("DEBUG", "True") == "True"
+# Por defecto False: con DEBUG=True en producción se publican trazas completas y
+# Django acumula todas las queries en memoria (el contenedor acaba reiniciándose).
+DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
@@ -100,11 +102,16 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.awsapprunner.com",
     "https://*.mystherai.com",
     "http://*.mystherai.com",
+    # El comodín *.mystherai.com NO cubre el dominio raíz en Django: sin estas dos
+    # entradas, toda petición mutante desde mystherai.com se rechazaba por origen.
+    "https://mystherai.com",
+    "http://mystherai.com",
 ]
 
 CORS_ALLOWED_ORIGINS += [
     "https://gradio.mystherai.com",
     "https://mystherai.com",
+    "https://www.mystherai.com",
 ]
 
 SESSION_COOKIE_SAMESITE = "None"
