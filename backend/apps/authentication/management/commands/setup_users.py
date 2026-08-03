@@ -22,14 +22,21 @@ from django.contrib.auth import get_user_model
 
 
 # (email canónico, nombre, is_staff, is_superuser)
+# Rodrigo es jefe de equipo desde agosto de 2026: mismos permisos que Bruno.
+# A diferencia de Bruno, Rodrigo SÍ estiliza, así que sigue en EQUIPO_ACTUAL y
+# sus reservas no se liberan (ver ADMINS_QUE_NO_ESTILIZAN más abajo).
 ACCOUNTS = [
     ('brunoibarraadame@gmail.com',  'Bruno',   True,  True),
+    ('rodrigo@mystherai.com',       'Rodrigo', True,  True),
     ('fabio.ramos.reyes@gmail.com', 'Fabio',   False, False),
     ('kathysp99@gmail.com',         'Katty',   False, False),
     ('wilson@mystherai.com',        'Wilson',  False, False),
     ('olenka@mystherai.com',        'Olenka',  False, False),
-    ('rodrigo@mystherai.com',       'Rodrigo', False, False),
 ]
+
+# Admins que no producen: se les liberan las reservas automáticamente.
+# Rodrigo NO va aquí — es admin y además estiliza.
+ADMINS_QUE_NO_ESTILIZAN = ['Bruno']
 
 # Ex-empleados: se desactivan, no se borran, para conservar su histórico.
 DEACTIVATED = [
@@ -111,13 +118,15 @@ class Command(BaseCommand):
                     f'Su trabajo puede repartirse entre ambas.'
                 ))
 
-        # Liberar reservas del admin (Bruno no estiliza)
+        # Liberar reservas de los admins que no producen.
+        # Rodrigo es admin pero sí estiliza: sus 81 reservas deben quedarse donde están.
         try:
             from apps.sheets.models import VideoMetadata
-            freed = VideoMetadata.objects.filter(
-                tipo='censo', estado_censo='Reservado', reservado_por__iexact='Bruno'
-            ).update(estado_censo='Disponible', reservado_por=None)
-            if freed:
-                self.stdout.write(f'Liberadas {freed} reservas de Bruno')
+            for nombre in ADMINS_QUE_NO_ESTILIZAN:
+                freed = VideoMetadata.objects.filter(
+                    tipo='censo', estado_censo='Reservado', reservado_por__iexact=nombre
+                ).update(estado_censo='Disponible', reservado_por=None)
+                if freed:
+                    self.stdout.write(f'Liberadas {freed} reservas de {nombre}')
         except Exception as e:
             self.stdout.write(f'No se pudieron liberar reservas: {e}')
