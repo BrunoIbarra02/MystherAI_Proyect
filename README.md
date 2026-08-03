@@ -90,6 +90,33 @@ Siempre un **tag único** (hash de git) + **nueva revisión de task definition**
 - **Miembros del equipo**: reservan videos del censo, los estilizan en Gradio, ven su propio historial en "Estilizados". Solo pueden editar/borrar sus propias entradas de registro (no las de otros).
 - Cuentas de ex-empleados se desactivan (`is_active=False`) en `backend/apps/authentication/management/commands/setup_users.py`, no se borran — así se conserva el histórico de su trabajo.
 
+## Base de datos (Supabase) — leer antes de diagnosticar nada
+
+La BD es el proyecto Supabase **PORTAL AUTH** (ref `lncvnhgzoxxjdcesofxg`, org MystherIA). Se conecta
+por `DATABASE_URL` con `dj_database_url`. **Supabase es solo Postgres aquí**: no se usa el cliente JS,
+ni Supabase Auth, ni variables `NEXT_PUBLIC_SUPABASE_*` — la autenticación es la de Django. Los
+quickstarts que ofrece el dashboard de Supabase son de Next.js y no aplican a este stack.
+
+### Si la web "pierde los videos" o "las contraseñas fallan"
+
+Casi siempre es la BD, no el código. El plan free **pausa el proyecto tras 7 días sin actividad** y
+entonces todo lo que consulta la BD devuelve 500, mientras lo que lee de disco sigue funcionando.
+
+```bash
+curl http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com/api/auth/health/
+# {"ok":true,"db":"ok"}       → la BD está viva, el problema es otro
+# {"ok":false,"db":"caida"}   → Supabase pausado: restaurar en el dashboard
+```
+
+Para restaurar: https://supabase.com/dashboard → **PORTAL AUTH** → *Restore project*. Hay **90 días**
+desde la pausa; después el proyecto no se recupera.
+
+Mitigación activa: `.github/workflows/keepalive.yml` consulta `/api/auth/health/` a diario (usa la
+variable de repositorio `BACKEND_URL`). La solución definitiva es **pasar Supabase a plan Pro**.
+
+> Tras restaurar la BD, reiniciar la task de ECS: el contenedor encadena
+> `migrate && setup_users && sync_sheets && gradio`, así que si arrancó con la BD caída, Gradio no subió.
+
 ## Problemas conocidos / en validación
 
 - **Miniaturas rotas en registros antiguos**: algunos registros muestran el video/imagen en blanco. Hipótesis: las URLs de salida de WaveSpeed (CloudFront) pueden ser temporales y expirar — no hay re-subida a almacenamiento permanente (S3/Drive) al momento de guardar. Usar el filtro **"⚠ SIN VIDEO"** en "Estilizados Equipo" (`/profile`) para ubicar estos registros.
