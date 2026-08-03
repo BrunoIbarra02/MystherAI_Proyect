@@ -1637,6 +1637,79 @@ class DenegarVideoView(APIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+class MediaHealthView(APIView):
+    """Comprueba los enlaces de video/imagen y reporta cuáles están rotos.
+
+    Antes, un enlace muerto se veía como un hueco negro sin explicación y el
+    equipo lo interpretaba como "faltan videos". Esto lo hace explícito.
+
+    GET /api/sheets/media-health/?tipo=registro&limit=120
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from . import media_health as mh
+
+        tipo  = (request.query_params.get('tipo') or 'registro').lower()
+        try:
+            limite = min(int(request.query_params.get('limit', 120)), 400)
+        except ValueError:
+            limite = 120
+
+        campos = (['drive_link', 'imagen_link', 'video_original_link']
+                  if tipo == 'registro' else ['drive_link'])
+
+        filas = list(
+            VideoMetadata.objects.filter(tipo=tipo)
+            .order_by('-id')
+            .values('id', 'video_id', 'usuario', 'estilizado', *campos)[:limite]
+        )
+
+        pendientes = [((f['id'], campo), f.get(campo) or '')
+                      for f in filas for campo in campos]
+        resultados = mh.comprobar_lote(pendientes)
+
+        resumen  = {}
+        por_campo = {campo: {} for campo in campos}
+        rotos    = []
+
+        for f in filas:
+            problemas = []
+            for campo in campos:
+                estado, detalle = resultados.get((f['id'], campo), (mh.ERROR_RED, ''))
+                resumen[estado] = resumen.get(estado, 0) + 1
+                por_campo[campo][estado] = por_campo[campo].get(estado, 0) + 1
+                if estado in mh.ESTADOS_ROTOS:
+                    problemas.append({'campo': campo, 'estado': estado,
+                                      'etiqueta': mh.ETIQUETAS.get(estado, estado),
+                                      'detalle': detalle,
+                                      'url': (f.get(campo) or '')[:200]})
+            if problemas:
+                rotos.append({
+                    'id':         f['id'],
+                    'video_id':   f['video_id'],
+                    'usuario':    f.get('usuario'),
+                    'estilizado': f.get('estilizado'),
+                    'problemas':  problemas,
+                })
+
+        total_enlaces = sum(resumen.values())
+        total_rotos   = sum(v for k, v in resumen.items() if k in mh.ESTADOS_ROTOS)
+
+        return Response({
+            'tipo':             tipo,
+            'filasRevisadas':   len(filas),
+            'enlacesRevisados': total_enlaces,
+            'enlacesRotos':     total_rotos,
+            'timeoutSegundos':  mh.TIMEOUT_SEGUNDOS,
+            'resumen':          [{'estado': k, 'etiqueta': mh.ETIQUETAS.get(k, k),
+                                  'cantidad': v, 'roto': k in mh.ESTADOS_ROTOS}
+                                 for k, v in sorted(resumen.items(), key=lambda x: -x[1])],
+            'porCampo':         por_campo,
+            'rotos':            rotos,
+        })
+
+
 class GradioErrorView(APIView):
     """Log and retrieve Gradio pipeline errors per team member.
     Escritura desde el servicio interno de Gradio; lectura para el equipo."""

@@ -29,4 +29,7 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8080
 EXPOSE 7860
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py setup_users && python manage.py sync_sheets && python /app/gradio-service/app.py & gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2"]
+# limpiar_reservas es idempotente: si no hay reservas de ex-empleados ni videos
+# disponibles, no toca nada. Ojo: si alguien libera un video a propósito, el
+# siguiente arranque lo reasignará al miembro con menos carga.
+CMD ["sh", "-c", "python manage.py migrate && python manage.py setup_users && python manage.py sync_sheets && python manage.py limpiar_reservas && python /app/gradio-service/app.py & gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2"]

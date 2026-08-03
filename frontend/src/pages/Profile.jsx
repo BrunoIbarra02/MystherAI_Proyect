@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Video, CheckCircle, Users, LogOut,
   BookOpen, BarChart2, Layers, Clapperboard,
-  ExternalLink, Unlock, Play, Camera,
+  ExternalLink, Unlock, Play, Camera, Activity, AlertTriangle,
 } from 'lucide-react';
 import AppNavbar from '../components/AppNavbar';
 import api from '../utils/api';
@@ -84,7 +84,26 @@ export default function Profile() {
   const [errFilter, setErrFilter]     = useState('');
   const [asignando, setAsignando]     = useState(false);
   const [asignResult, setAsignResult] = useState(null);
+  // Health check de enlaces de video/imagen
+  const [salud, setSalud]             = useState(null);
+  const [saludCargando, setSaludCargando] = useState(false);
+  const [saludError, setSaludError]   = useState('');
+  const [saludTipo, setSaludTipo]     = useState('registro');
   const fileRef = useRef();
+
+  const revisarEnlaces = async (tipo) => {
+    setSaludCargando(true); setSaludError(''); setSalud(null); setSaludTipo(tipo);
+    try {
+      const r = await api.get(`/sheets/media-health/?tipo=${tipo}&limit=150`);
+      setSalud(r.data);
+    } catch (err) {
+      setSaludError(err.response?.data?.detail
+        || err.response?.data?.error
+        || 'No se pudo completar la revisión. Reintenta en un momento.');
+    } finally {
+      setSaludCargando(false);
+    }
+  };
 
   useEffect(() => {
     api.get('/auth/profile-data/')
@@ -199,6 +218,7 @@ export default function Profile() {
     { key: 'equipo_registro', label: 'Estilizados Equipo', count: allRegistro.length,     icon: <CheckCircle size={14} /> },
     { key: 'equipo',          label: 'Reservas Equipo',    count: allReservations.length, icon: <Users size={14} /> },
     { key: 'errores',         label: 'Errores',            count: errores.length,         icon: <Video size={14} /> },
+    { key: 'salud',           label: 'Enlaces',            count: salud?.enlacesRotos ?? null, icon: <Activity size={14} /> },
   ] : [
     { key: 'reservados',  label: 'Mis Reservas', count: reserved.length,  icon: <Video size={14} /> },
     { key: 'estilizados', label: 'Estilizados',  count: stylized.length,  icon: <CheckCircle size={14} /> },
@@ -344,7 +364,10 @@ export default function Profile() {
                 <button key={t.key} onClick={() => setTab(t.key)}
                   style={{ ...s.tabBtn, ...(tab === t.key ? s.tabActive : {}) }}>
                   {t.icon} {t.label}
-                  <span style={{ ...s.tabCount, ...(tab === t.key ? s.tabCountActive : {}) }}>{t.count}</span>
+                  {/* La pestaña de enlaces no tiene contador hasta que se lanza la revisión */}
+                  {t.count !== null && t.count !== undefined && (
+                    <span style={{ ...s.tabCount, ...(tab === t.key ? s.tabCountActive : {}) }}>{t.count}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -525,6 +548,114 @@ export default function Profile() {
               );
             })()}
 
+            {/* Salud de enlaces (admin) */}
+            {tab === 'salud' && user?.is_staff && (
+              <>
+                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 16px', lineHeight: 1.6, maxWidth: '760px' }}>
+                  Comprueba uno a uno los enlaces de video e imagen y dice cuáles están rotos.
+                  Un enlace muerto se ve en la web como un hueco negro sin explicación: esto lo hace visible.
+                  Se marca como roto todo lo que dé <strong>4xx</strong>, <strong>5xx</strong>,
+                  tarde más de <strong>{salud?.timeoutSegundos || 8} segundos</strong>, o sea un archivo de
+                  Drive sin permiso público (Drive responde 200 con una página de "solicitar acceso",
+                  así que mirar solo el código de estado no sirve).
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                  {['registro', 'censo'].map(t => (
+                    <button key={t} disabled={saludCargando} onClick={() => revisarEnlaces(t)} style={{
+                      padding: '10px 22px', background: t === 'registro' ? '#5b8def' : '#8e44ad',
+                      color: '#000', border: 'none', borderRadius: '8px', fontWeight: 800,
+                      fontSize: '11px', letterSpacing: '1.5px',
+                      cursor: saludCargando ? 'wait' : 'pointer', opacity: saludCargando ? 0.6 : 1,
+                    }}>
+                      {saludCargando && saludTipo === t
+                        ? 'REVISANDO...'
+                        : `⛑ REVISAR ENLACES DE ${t.toUpperCase()}`}
+                    </button>
+                  ))}
+                </div>
+
+                {saludError && (
+                  <div style={{ padding: '12px 16px', borderRadius: '8px', marginBottom: '18px',
+                                background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)',
+                                color: '#fca5a5', fontSize: '13px' }}>
+                    {saludError}
+                  </div>
+                )}
+
+                {saludCargando && (
+                  <p style={{ fontSize: '12px', color: '#666' }}>
+                    Comprobando enlaces contra Drive y CloudFront. Puede tardar un minuto.
+                  </p>
+                )}
+
+                {salud && (
+                  <>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                      <div style={saludKpi(salud.enlacesRotos > 0 ? '#ff4b2b' : '#4caf7d')}>
+                        <div style={saludKpiNum}>{salud.enlacesRotos}</div>
+                        <div style={saludKpiLbl}>ENLACES ROTOS</div>
+                      </div>
+                      <div style={saludKpi('#5b8def')}>
+                        <div style={saludKpiNum}>{salud.enlacesRevisados}</div>
+                        <div style={saludKpiLbl}>REVISADOS</div>
+                      </div>
+                      <div style={saludKpi('#888')}>
+                        <div style={saludKpiNum}>{salud.filasRevisadas}</div>
+                        <div style={saludKpiLbl}>REGISTROS</div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      {salud.resumen.map(r => (
+                        <div key={r.estado} style={{
+                          display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '12.5px',
+                        }}>
+                          <span style={{
+                            width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                            background: r.roto ? '#ff4b2b' : '#4caf7d',
+                          }} />
+                          <span style={{ minWidth: '42px', fontWeight: 800, color: r.roto ? '#ff4b2b' : '#4caf7d' }}>
+                            {r.cantidad}
+                          </span>
+                          <span style={{ color: '#bbb' }}>{r.etiqueta}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {salud.rotos.length === 0
+                      ? <Empty text="Ningún enlace roto. Todo carga correctamente." />
+                      : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {salud.rotos.map(r => (
+                            <div key={r.id} style={{
+                              padding: '12px 14px', borderRadius: '10px', background: '#0d0d0d',
+                              border: '1px solid rgba(255,75,43,0.25)',
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                                <AlertTriangle size={13} color="#ff4b2b" />
+                                <strong style={{ fontSize: '13px', color: '#eee' }}>#{r.video_id}</strong>
+                                {r.estilizado && <span style={{ fontSize: '11px', color: '#bc13fe' }}>{r.estilizado}</span>}
+                                {r.usuario && <span style={{ fontSize: '11px', color: '#666' }}>· {r.usuario}</span>}
+                              </div>
+                              {r.problemas.map((p, i) => (
+                                <div key={i} style={{ fontSize: '11.5px', color: '#999', paddingLeft: '21px', lineHeight: 1.7 }}>
+                                  <code style={{ color: '#5b8def' }}>{p.campo}</code>
+                                  {' — '}
+                                  <span style={{ color: '#ff8a70' }}>{p.etiqueta}</span>
+                                  {p.detalle && <span style={{ color: '#555' }}> ({p.detalle})</span>}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                  </>
+                )}
+              </>
+            )}
+
             {/* Equipo (admin) */}
             {tab === 'equipo' && user?.is_staff && (
               <>
@@ -692,6 +823,14 @@ function NavItem({ label, icon, onClick }) {
     </button>
   );
 }
+
+/* Tarjetas de KPI del health check de enlaces */
+const saludKpi = (color) => ({
+  flex: '1 1 130px', minWidth: '130px', padding: '14px 16px', borderRadius: '10px',
+  background: '#0d0d0d', borderLeft: `3px solid ${color}`,
+});
+const saludKpiNum = { fontSize: '26px', fontWeight: 800, color: '#eee', lineHeight: 1.1 };
+const saludKpiLbl = { fontSize: '10px', color: '#777', letterSpacing: '1px', marginTop: '4px' };
 
 const Empty = ({ text }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '80px 0', gap: '12px' }}>
