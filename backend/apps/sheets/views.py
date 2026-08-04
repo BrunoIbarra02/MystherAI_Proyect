@@ -1494,7 +1494,8 @@ class ReservarVideoView(APIView):
 
         video.estado_censo = 'Reservado'
         video.reservado_por = nombre
-        video.save(update_fields=['estado_censo', 'reservado_por'])
+        video.reservado_por_user = request.user
+        video.save(update_fields=['estado_censo', 'reservado_por', 'reservado_por_user'])
         return Response({'ok': True, 'estado': 'Reservado', 'reservado_por': nombre,
                          'drive_link': video.drive_link, 'video_id': video.video_id},
                         status=status.HTTP_200_OK)
@@ -1526,7 +1527,8 @@ class LiberarVideoView(APIView):
 
         video.estado_censo = 'Disponible'
         video.reservado_por = None
-        video.save(update_fields=['estado_censo', 'reservado_por'])
+        video.reservado_por_user = None
+        video.save(update_fields=['estado_censo', 'reservado_por', 'reservado_por_user'])
         return Response({'ok': True, 'estado': 'Disponible'}, status=status.HTTP_200_OK)
 
 
@@ -1559,9 +1561,14 @@ class AsignarCensoView(APIView):
     permission_classes = [EsAdmin]
 
     def post(self, request):
+        from apps.users.utils import resolve_by_display_name
+
         members = EQUIPO_ACTUAL
         if not members:
             return Response({'error': 'No hay miembros de equipo configurados.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Resolver una vez por nombre -> User, para no repetir la consulta N veces.
+        member_users = {m: resolve_by_display_name(m) for m in members}
 
         # 1. Reclamar reservas que no pertenecen a nadie del equipo actual
         q_equipo = Q()
@@ -1569,7 +1576,7 @@ class AsignarCensoView(APIView):
             q_equipo |= Q(reservado_por__iexact=m)
         reclamados = VideoMetadata.objects.filter(
             tipo='censo', estado_censo='Reservado'
-        ).exclude(q_equipo).update(estado_censo='Disponible', reservado_por=None)
+        ).exclude(q_equipo).update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
 
         # 2. Repartir todo lo Disponible entre el equipo actual
         disponibles = list(
@@ -1580,7 +1587,7 @@ class AsignarCensoView(APIView):
         for i, vid_pk in enumerate(disponibles):
             member = members[i % len(members)]
             VideoMetadata.objects.filter(pk=vid_pk).update(
-                estado_censo='Reservado', reservado_por=member)
+                estado_censo='Reservado', reservado_por=member, reservado_por_user=member_users[member])
             detalle[member] += 1
 
         return Response({
@@ -1644,7 +1651,7 @@ class DenegarVideoView(APIView):
             ).filter(
                 Q(video_id=registro.video_id) |
                 Q(id_video_equipo=registro.video_id)
-            ).update(estado_censo='Disponible', reservado_por=None)
+            ).update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
 
         return Response({'ok': True, 'estado_revision': 'Rechazado',
                          'censo_liberado': censo_liberado}, status=status.HTTP_200_OK)

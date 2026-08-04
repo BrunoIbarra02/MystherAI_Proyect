@@ -1,4 +1,5 @@
-﻿from django.db import models
+﻿from django.conf import settings
+from django.db import models
 
 class VideoMetadata(models.Model):
     video_id = models.CharField(max_length=100, blank=True, null=True)
@@ -34,6 +35,15 @@ class VideoMetadata(models.Model):
     ESTADO_CENSO = [('Disponible', 'Disponible'), ('Reservado', 'Reservado'), ('Estilizado', 'Estilizado')]
     estado_censo = models.CharField(max_length=20, choices=ESTADO_CENSO, default='Disponible', blank=True, null=True)
     reservado_por = models.CharField(max_length=100, blank=True, null=True)
+    # Issue 24: FK real en paralelo al texto libre de arriba. No se retira
+    # `reservado_por` todavía — se escriben los dos a la vez hasta que esta
+    # FK esté poblada y verificada en producción con un backfill (ver
+    # apps/sheets/management/commands/backfill_reservado_por_user.py), y
+    # solo entonces se migran las lecturas al FK y se retira el texto.
+    reservado_por_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='videos_reservados',
+    )
 
     # --- REVISIÓN (sólo registro) ---
     ESTADO_REVISION = [('Pendiente', 'Pendiente'), ('Aprobado', 'Aprobado'), ('Rechazado', 'Rechazado')]

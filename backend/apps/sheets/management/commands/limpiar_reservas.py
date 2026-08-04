@@ -25,6 +25,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 
 from apps.sheets.models import VideoMetadata
+from apps.users.utils import resolve_by_display_name
 
 
 # Se importa de views para no duplicar la fuente de verdad del equipo.
@@ -61,7 +62,8 @@ class Command(BaseCommand):
             if n:
                 self.stdout.write(f'  consolidar -> {nombre_canonico}: {n} reservas')
                 if not dry:
-                    variantes.update(reservado_por=nombre_canonico)
+                    variantes.update(reservado_por=nombre_canonico,
+                                      reservado_por_user=resolve_by_display_name(nombre_canonico))
                 consolidados += n
 
         # ── 2. Liberar lo que no pertenece a nadie del equipo actual ────────
@@ -81,11 +83,12 @@ class Command(BaseCommand):
         for nombre, n in sorted(detalle_ajenos.items(), key=lambda x: -x[1]):
             self.stdout.write(f'  liberar <- {nombre}: {n} reservas')
         if liberados and not dry:
-            ajenos.update(estado_censo='Disponible', reservado_por=None)
+            ajenos.update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
 
         # ── 3. Repartir lo disponible entre el equipo actual ────────────────
         repartidos = {}
         if repartir and equipo:
+            equipo_users = {m: resolve_by_display_name(m) for m in equipo}
             disponibles = list(
                 VideoMetadata.objects.filter(tipo='censo', estado_censo='Disponible')
                 .order_by('id').values_list('id', flat=True)
@@ -103,7 +106,8 @@ class Command(BaseCommand):
                 repartidos[destino] = repartidos.get(destino, 0) + 1
                 if not dry:
                     VideoMetadata.objects.filter(pk=vid_pk).update(
-                        estado_censo='Reservado', reservado_por=destino)
+                        estado_censo='Reservado', reservado_por=destino,
+                        reservado_por_user=equipo_users[destino])
             for m in equipo:
                 self.stdout.write(f'  repartir -> {m}: +{repartidos.get(m, 0)} '
                                   f'(total {carga[m]})')
