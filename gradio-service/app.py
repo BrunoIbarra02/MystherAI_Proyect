@@ -211,10 +211,37 @@ def do_v2v(img_url_state, vid_state, model_label, prompt_vid, key, miembro):
         log_error(miembro, "V2V", e, model)
         raise gr.Error(f"Error V2V ({model_label}): {e}")
 
+# ── 05: DATOS DEL CENSO (para la pantalla de revisión previa al guardado) ─────
+CENSO_FIELDS = ["mapa", "especie", "genero", "etnia", "duracion", "camara", "plano", "interior", "accion"]
+
+def do_fetch_censo(video_id):
+    """Trae los metadatos del censo original para pre-rellenar la pantalla de
+    revisión. video_id es el PK de VideoMetadata (lo manda React, ver
+    VideoGalleryLayout.jsx / Profile.jsx), así que se puede pedir directo por
+    /videos/<pk>/. Si falla (red, video_id vacío, etc.) se devuelven campos
+    vacíos y el usuario los rellena a mano — nunca bloquea el flujo."""
+    vacios = tuple("" for _ in CENSO_FIELDS)
+    if not video_id:
+        return vacios
+    try:
+        r = req.get(f"{BACKEND_URL}/api/sheets/videos/{video_id}/", timeout=8)
+        if r.status_code != 200:
+            return vacios
+        d = r.json()
+        return tuple(d.get(f) or "" for f in CENSO_FIELDS)
+    except Exception:
+        return vacios
+
 # ── GUARDAR ───────────────────────────────────────────────────────────────────
-def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url, orig_url):
+def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url, orig_url,
+            mapa, especie, genero, etnia, duracion, camara, plano, interior, accion):
     if not video_id or not vid_url:
         return "⚠ Completa el ID de video y genera el video en el paso 04."
+    # Mínimo exigido por el flujo de trabajo: sin mapa/especie el registro
+    # queda incompleto y no sirve para las estadísticas del equipo.
+    faltantes = [n for n, v in [("MAPA", mapa), ("ESPECIE", especie)] if not str(v or "").strip()]
+    if faltantes:
+        return f"⚠ Faltan campos obligatorios: {', '.join(faltantes)}. Complétalos arriba antes de guardar."
     try:
         r = req.post(f"{BACKEND_URL}/api/sheets/videos/", json={
             "video_id":            str(video_id).strip(),
@@ -227,6 +254,15 @@ def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url,
             "drive_link":          vid_url,
             "video_original_link": orig_url,
             "estado_revision":     "Pendiente",
+            "mapa":                mapa,
+            "especie":             especie,
+            "genero":              genero,
+            "etnia":               etnia,
+            "duracion":            duracion,
+            "camara":              camara,
+            "plano":               plano,
+            "interior":            interior,
+            "accion":              accion,
         }, timeout=15)
         if r.status_code == 201:
             return "✓ GUARDADO EN REGISTRO — Pendiente de revisión"
@@ -308,7 +344,7 @@ with gr.Blocks(title="MystherAI Studio") as demo:
           MYSTHERIAI STUDIO
         </div>
         <div style="font-size:10px;color:#333;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">
-          01 CARGAR · 02 EDITAR · 03 IMAGEN · 04 V2V
+          01 CARGAR · 02 EDITAR · 03 IMAGEN · 04 V2V · 05 GUARDAR
         </div>
       </div>
     </div>
@@ -424,10 +460,10 @@ with gr.Blocks(title="MystherAI Studio") as demo:
             vid_out      = gr.Video(label="Video Estilizado", height=340)
             vid_url_show = gr.Textbox(label="URL del resultado", interactive=False, lines=2)
 
-            gr.HTML('<hr class="step-divider"><div class="pipe-label">Cuando estés conforme · guarda en el registro</div>')
+            gr.HTML('<hr class="step-divider"><div class="pipe-label">Cuando estés conforme · revisa los datos antes de guardar</div>')
 
-            btn_save = gr.Button("✓  GUARDAR Y FINALIZAR", variant="primary")
-            save_st  = gr.Textbox(label="Estado", interactive=False, lines=1)
+            btn_to_revisar = gr.Button("→  REVISAR Y GUARDAR", variant="primary")
+            # btn_to_revisar wired after tab 05 is defined
 
             btn_v2v.click(
                 do_v2v,
@@ -435,14 +471,42 @@ with gr.Blocks(title="MystherAI Studio") as demo:
                 [vid_out, s_vid_out],
             ).then(lambda u: u, s_vid_out, vid_url_show)
 
+        # ══════════════════════════════════════════════════════════════════════
+        # 05  REVISAR Y GUARDAR
+        # ══════════════════════════════════════════════════════════════════════
+        with gr.Tab("05  GUARDAR", id=4) as tab_revisar:
+            gr.HTML('<div class="pipe-label">Completa los datos del vídeo · obligatorio antes de guardar</div>')
+
+            with gr.Row():
+                v_mapa     = gr.Textbox(label="Mapa *")
+                v_especie  = gr.Textbox(label="Especie *")
+            with gr.Row():
+                v_genero   = gr.Textbox(label="Género")
+                v_etnia    = gr.Textbox(label="Etnia")
+            with gr.Row():
+                v_duracion = gr.Textbox(label="Duración")
+                v_camara   = gr.Textbox(label="Cámara")
+            with gr.Row():
+                v_plano    = gr.Textbox(label="Plano")
+                v_interior = gr.Textbox(label="Interior")
+            v_accion = gr.Textbox(label="Acción")
+
+            gr.HTML('<hr class="step-divider">')
+            gr.HTML('<div class="pipe-label">Resumen del vídeo generado</div>')
+            resumen_out = gr.Textbox(label="Enlaces / prompts que se guardarán", interactive=False, lines=4)
+
+            btn_save = gr.Button("✓  GUARDAR Y FINALIZAR", variant="primary")
+            save_st  = gr.Textbox(label="Estado", interactive=False, lines=1)
+
             btn_save.click(
                 do_save,
                 [s_video_id, s_miembro, s_estilo,
-                 s_prompt_i, s_img_url, prompt_v, s_vid_out, s_vid],
+                 s_prompt_i, s_img_url, prompt_v, s_vid_out, s_vid,
+                 v_mapa, v_especie, v_genero, v_etnia, v_duracion, v_camara, v_plano, v_interior, v_accion],
                 save_st,
             )
 
-    # ── Cross-tab navigation wiring (must be after all tabs are defined) ──────
+
 
     def _go_imagen(frame):
         img = gr.update(value=frame) if frame else gr.update()
@@ -457,6 +521,20 @@ with gr.Blocks(title="MystherAI Studio") as demo:
     btn_to_imagen.click(_go_imagen, s_frame, [tabs, frame_disp])
     btn_to_imagen2.click(_go_imagen, s_frame, [tabs, frame_disp])
     btn_to_v2v.click(_go_v2v, [s_img_url, s_vid, s_prompt_i], [tabs, v2v_img_show, v2v_vid_show, prompt_v])
+
+    def _go_revisar(video_id, miembro, estilo, prompt_i, img_url, prompt_vid, vid_out, vid_orig):
+        censo = do_fetch_censo(video_id)
+        resumen = (
+            f"Miembro: {miembro}\nEstilo: {estilo}\n"
+            f"Imagen: {img_url}\nVideo original: {vid_orig}\nVideo estilizado: {vid_out}"
+        )
+        return (gr.update(selected=4), *censo, resumen)
+
+    btn_to_revisar.click(
+        _go_revisar,
+        [s_video_id, s_miembro, s_estilo, s_prompt_i, s_img_url, prompt_v, s_vid_out, s_vid],
+        [tabs, v_mapa, v_especie, v_genero, v_etnia, v_duracion, v_camara, v_plano, v_interior, v_accion, resumen_out],
+    )
 
     # Also refresh frame_disp whenever a new frame is snapped (user may stay on tab 01)
     btn_snap.click(
