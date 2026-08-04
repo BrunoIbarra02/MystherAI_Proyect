@@ -21,14 +21,22 @@ def es_servicio_interno(request):
 
 
 class PuedeEscribirVideos(permissions.BasePermission):
-    """Lectura para cualquiera; escritura solo para usuarios con sesión
-    o para el servicio interno de Gradio (localhost)."""
+    """Lectura y escritura requieren sesión de usuario, salvo el servicio
+    interno de Gradio (localhost), que puede leer y escribir sin sesión.
 
-    message = 'Necesitas iniciar sesión para modificar videos.'
+    Issue 21: antes la lectura (GET) estaba abierta a CUALQUIERA sin
+    autenticar (SAFE_METHODS devolvía True siempre) — el catálogo, el
+    registro, los prompts y los enlaces de Drive de todo el equipo eran
+    accesibles sin login por cualquiera que conociera la URL de la API,
+    aunque el frontend obliga a iniciar sesión para verlos (ProtectedRoute
+    en App.jsx). Esto no es una web pública (ver contexto del proyecto), así
+    que se cierra ese hueco: ahora hace falta sesión o ser el servicio
+    interno, igual que para escribir.
+    """
+
+    message = 'Necesitas iniciar sesión para acceder a este recurso.'
 
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
         return bool(request.user and request.user.is_authenticated) or es_servicio_interno(request)
 
 
@@ -82,6 +90,9 @@ class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class FilterOptionsView(APIView):
+    # No declaraba permission_classes -> heredaba el AllowAny global (Issue 21).
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         tipo = request.query_params.get('tipo', 'censo').lower()
         if tipo == 'censo':
@@ -130,7 +141,9 @@ class AutoRegisterVideoView(APIView):
 # ==========================================
 
 class CensoSummaryView(APIView):
-    permission_classes = []
+    # Issue 21: era publica (permission_classes = []) pese a estar detras
+    # de ProtectedRoute en el frontend.
+    permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
         import csv
@@ -538,7 +551,8 @@ class RegistroSummaryView(APIView):
     Vista que analiza el Excel de Registro de Parámetros (Fase 2 — Estilizado)
     y devuelve todas las métricas de balance del dataset para el nuevo Dashboard.
     """
-    permission_classes = []
+    # Issue 21: era publica pese a estar detras de ProtectedRoute en el frontend.
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         import openpyxl
