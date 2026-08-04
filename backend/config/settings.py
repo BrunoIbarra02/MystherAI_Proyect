@@ -13,6 +13,23 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-key")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = ["*"]
 
+# Issue 21: si en producción (DEBUG=False) no hay SECRET_KEY en el entorno,
+# Django arranca igual con la clave insegura de arriba — que es pública,
+# está en este mismo archivo en GitHub. Con ella cualquiera puede falsificar
+# sesiones y tokens firmados. No se hace fallar el arranque aquí: si la
+# variable no está puesta hoy en el entorno real y nadie lo sabe, un fallo
+# duro tumbaría el servicio sin aviso. En su lugar, esto deja un aviso
+# imposible de no ver en los logs de despliegue (Cloud Logging), para
+# corregirlo a propósito. Una vez confirmado que SECRET_KEY siempre está
+# puesta en producción, cambiar esto por un `raise ImproperlyConfigured`.
+if not DEBUG and SECRET_KEY == "django-insecure-key":
+    import logging
+    logging.getLogger("django").critical(
+        "SECRET_KEY no está configurada como variable de entorno — usando la "
+        "clave insegura por defecto, pública en el repositorio. Configúrala "
+        "en el entorno de producción cuanto antes (Issue 21)."
+    )
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
