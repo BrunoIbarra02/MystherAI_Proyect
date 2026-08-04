@@ -119,6 +119,17 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = True
 
+# Issue 14: detrás de un proxy (Cloud Run, ALB, nginx) Django no sabe por sí
+# solo que la conexión real del navegador es HTTPS — solo ve la conexión
+# interna proxy->contenedor, que suele ser HTTP simple. Sin este header,
+# request.is_secure() da False, y con SESSION_COOKIE_SECURE / CSRF_COOKIE_SECURE
+# en True el navegador ni siquiera reenvía esas cookies porque él sí sabe que
+# está en HTTPS. Resultado: la sesión "se pierde" de forma intermitente según
+# qué instancia/ruta atienda la petición — exactamente el síntoma del Issue.
+# El proxy de Cloud Run añade X-Forwarded-Proto de forma fiable (no lo puede
+# falsear un cliente externo, lo sobrescribe el propio proxy de borde).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 AUTHENTICATION_BACKENDS = [
     "apps.authentication.backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
