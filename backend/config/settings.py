@@ -131,10 +131,25 @@ CORS_ALLOWED_ORIGINS += [
     "https://www.mystherai.com",
 ]
 
-SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SECURE = True
+# --- DESARROLLO LOCAL POR HTTP (opt-in, no cambia el comportamiento por defecto) ---
+# En HTTP plano (localhost sin TLS) el navegador descarta cookies Secure/SameSite=None.
+# Ademas, el proxy de Vite (changeOrigin: true) reescribe el Host hacia 127.0.0.1:8000,
+# asi que el Origin real del navegador (http://localhost:5173) nunca coincide con el
+# origen que Django calcula para si mismo -> todo POST autenticado da 403 CSRF salvo
+# que el origen local este en CSRF_TRUSTED_ORIGINS. Sin QA_LOCAL_HTTP=1 el comportamiento
+# es exactamente el mismo que antes (produccion no se ve afectada).
+_QA_LOCAL_HTTP = os.getenv("QA_LOCAL_HTTP") == "1"
+SESSION_COOKIE_SAMESITE = "Lax" if _QA_LOCAL_HTTP else "None"
+SESSION_COOKIE_SECURE = not _QA_LOCAL_HTTP
+CSRF_COOKIE_SAMESITE = "Lax" if _QA_LOCAL_HTTP else "None"
+CSRF_COOKIE_SECURE = not _QA_LOCAL_HTTP
+if _QA_LOCAL_HTTP:
+    CSRF_TRUSTED_ORIGINS += [
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "http://localhost:5174", "http://127.0.0.1:5174",
+        "http://localhost:8000", "http://127.0.0.1:8000",
+    ]
+# --- FIN AJUSTE TEMPORAL ---
 
 # Issue 14: detrás de un proxy (Cloud Run, ALB, nginx) Django no sabe por sí
 # solo que la conexión real del navegador es HTTPS — solo ve la conexión

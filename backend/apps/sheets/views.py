@@ -583,7 +583,6 @@ class RegistroSummaryView(APIView):
             productor    = str(row[2]).strip() if row[2] else ''
             estilo       = str(row[3]).strip() if row[3] else ''
             prompt_vid   = str(row[6]).strip() if row[6] else ''
-            img_link     = str(row[5]).strip() if row[5] else ''
             aceptado_raw = str(row[9]).strip() if row[9] else ''
             prompt_final   = str(row[10]).strip() if len(row) > 10 and row[10] else ''
             img_arreglo    = str(row[12]).strip() if len(row) > 12 and row[12] else ''

@@ -47,7 +47,6 @@ class Command(BaseCommand):
         dry      = options['dry_run']
         repartir = not options['no_repartir']
         equipo   = _equipo_actual()
-        equipo_lower = {m.lower(): m for m in equipo}
 
         reservados = VideoMetadata.objects.filter(tipo='censo', estado_censo='Reservado')
 
