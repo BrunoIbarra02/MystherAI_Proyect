@@ -49,6 +49,39 @@ class EsAdmin(permissions.BasePermission):
         return bool(request.user and request.user.is_authenticated and request.user.is_staff)
 
 
+class PuedeEscribirSuPropioRegistro(PuedeEscribirVideos):
+    """Como PuedeEscribirVideos, pero además exige propiedad para editar/borrar
+    una fila de Registro (README: "Solo pueden editar/borrar sus propias
+    entradas de registro (no las de otras)"). Ese requisito nunca estaba
+    implementado: cualquier usuario logueado podía editar o borrar el trabajo
+    ya aprobado de cualquier otro miembro vía PUT/PATCH/DELETE en
+    /api/sheets/videos/<pk>/ (confirmado en pruebas — ver QA_REPORT.md).
+
+    Lectura (GET) sigue abierta a todo el equipo: la Biblioteca es
+    deliberadamente compartida, no es a lo que se refiere el requisito.
+    Staff y el servicio interno de Gradio quedan exentos, como siempre.
+    """
+
+    message = 'Solo puedes editar o borrar tus propias entradas de Registro.'
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if es_servicio_interno(request):
+            return True
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.is_staff:
+            return True
+        if obj.tipo != 'registro':
+            # Las filas de censo no tienen dueño individual; solo staff
+            # o el servicio interno pueden mutarlas por esta vía.
+            return False
+        nombre = (user.first_name or user.username.split('@')[0] or '').strip().lower()
+        return bool(nombre) and (obj.usuario or '').strip().lower() == nombre
+
+
 # ==========================================
 # VISTAS ORIGINALES (RODRIGO)
 # ==========================================
@@ -86,7 +119,7 @@ class VideoListView(generics.ListCreateAPIView):
 class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = VideoMetadata.objects.all()
     serializer_class = VideoMetadataSerializer
-    permission_classes = [PuedeEscribirVideos]
+    permission_classes = [PuedeEscribirSuPropioRegistro]
 
 
 class FilterOptionsView(APIView):
