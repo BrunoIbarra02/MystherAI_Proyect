@@ -1,7 +1,5 @@
 # Pull Request — rodrigo/supabase-migration → main
 
-*(Contenido listo para pegar directamente en la descripción del PR de GitHub.)*
-
 ## Resumen
 
 Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectura pública del catálogo (Issue 21), añade la pantalla de revisión de metadatos en Gradio, empieza la migración de `reservado_por` a una FK real (Issue 24), y corrige las URLs muertas del ALB de AWS. Incluye además un fix de seguridad encontrado durante la QA de esta rama: cualquier miembro podía editar o borrar el trabajo ya aprobado de otro.
