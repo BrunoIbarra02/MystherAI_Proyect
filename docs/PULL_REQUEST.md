@@ -37,4 +37,4 @@ Durante la prueba de permisos se confirmó y corrigió una fuga real: cualquier 
 
 ## Documentación añadida
 
-Ver `docs/00_RESUMEN_GENERAL.md` para el mapa completo de los 13 documentos en `docs/`.
+Ver `docs/00_RESUMEN_GENERAL.md` para el mapa completo de los 14 documentos en `docs/`.
