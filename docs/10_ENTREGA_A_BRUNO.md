@@ -1,6 +1,4 @@
-# 10 — Entrega para Bruno
-
-Este documento debería bastarte para revisar la rama sin tener que preguntar nada más. Si algo no queda claro, es un fallo de este documento — dilo y se corrige.
+# 10 — Leer Bruno
 
 ## Estado de la rama
 
