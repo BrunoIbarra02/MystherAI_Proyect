@@ -1,6 +1,6 @@
-# Migración de usuarios desde la Supabase antigua
+# 05 — Migración de usuarios desde la Supabase antigua
 
-**Estado: PENDIENTE.** Bruno no tiene acceso actualmente a la instancia de Supabase antigua que contiene los usuarios legacy. Este documento deja el procedimiento completamente preparado para ejecutar en cuanto ese acceso se recupere y se entregue el export — no se ha ejecutado ni se inventó ningún dato.
+> **ESTADO: PENDIENTE Y BLOQUEADA.** Bruno no tiene acceso actualmente a la instancia de Supabase antigua que contiene los usuarios legacy. **No se ha ejecutado absolutamente nada de este procedimiento contra ninguna base de datos real, ni se ha inventado ningún dato de usuario.** Todo lo de abajo es preparación: procedimiento, formato esperado y validaciones, listo para ejecutar en el momento en que Bruno recupere el acceso y entregue el export real. No es tarea de esta rama resolver el acceso — es responsabilidad exclusiva de Bruno.
 
 ## Qué se comprobó (sobre datos de prueba obviamente ficticios, en la base de QA aislada, nunca sobre datos reales)
 

@@ -1,106 +1,124 @@
 # Manual de operación — Equipo de estilizado
 
-Este documento es para **Fabio, Wilson, Katty y Olenka**. No requiere conocimientos técnicos — solo el uso normal de la web y de Gradio.
+Para **Fabio, Wilson, Katty y Olenka**. No requiere conocimientos técnicos.
 
-## Flujo diario
+## Flujo de trabajo diario
 
-1. Entra a la web con tu cuenta.
-2. Ve a **Catálogo** y busca un vídeo marcado como **Disponible**.
-3. Ábrelo y pulsa **Reservar para estilizar**. A partir de ese momento es tuyo — nadie más puede tomarlo mientras esté reservado a tu nombre.
-4. Pulsa **Abrir en Gradio**. Se abrirá la herramienta con el vídeo ya cargado.
-5. Sigue los 5 pasos de Gradio (ver abajo).
-6. Cuando termines, tu trabajo queda **Pendiente** de revisión — Rodrigo (o quien esté de admin) lo aprobará o te pedirá cambios.
+```
+Iniciar sesión
+      ↓
+Revisar vídeos asignados
+      ↓
+Reservar nuevos vídeos si corresponde
+      ↓
+Abrir Gradio
+      ↓
+Realizar el estilizado
+      ↓
+Completar correctamente los metadatos
+      ↓
+Guardar el trabajo
+      ↓
+Comprobar que aparece en Registro
+      ↓
+Esperar revisión
+      ↓
+Corregir únicamente si Rodrigo lo solicita
+```
 
-## Cómo reservar un vídeo
+1. **Iniciar sesión** con tu cuenta en la web.
+2. **Revisar vídeos asignados** — entra al Catálogo y filtra por tu nombre (filtro "Usuario") para ver qué tienes ya reservado o repartido esa semana.
+3. **Reservar nuevos vídeos si corresponde** — si no tienes nada pendiente y hay disponibilidad, reserva según lo acordado esa semana (ver "Organización semanal" más abajo).
+4. **Abrir Gradio** desde el botón del vídeo reservado — ya lleva el vídeo, tu nombre y el identificador correctos.
+5. **Realizar el estilizado** — los pasos 01 a 04 de Gradio (cargar, editar si hace falta, imagen, vídeo).
+6. **Completar correctamente los metadatos** — Mapa y Especie son obligatorios; revisa que el resto de campos correspondan al vídeo real.
+7. **Guardar el trabajo** — solo cuando el resultado te convence.
+8. **Comprobar que aparece en Registro** — entra a la pestaña Registro y confirma que tu vídeo está ahí con estado "Pendiente".
+9. **Esperar revisión** — Rodrigo (o quien esté de admin) lo aprobará o pedirá cambios.
+10. **Corregir únicamente si Rodrigo lo solicita** — no reabras ni modifiques un trabajo ya aprobado por tu cuenta; si Rodrigo pide un cambio, edítalo y vuelve a esperar revisión.
 
-- Solo reserva un vídeo si vas a empezarlo en las próximas horas. Un vídeo reservado y sin tocar durante días bloquea a los demás.
-- Si al final no vas a poder hacerlo, **libera la reserva** (botón "Liberar reserva" en el mismo panel) para que otro compañero pueda tomarlo.
-- No reserves varios vídeos a la vez "por si acaso" — reserva uno, termínalo, reserva el siguiente.
+## Proceso de reservas
 
-## Cómo abrir Gradio
+- **Cuándo reservar**: solo cuando vayas a empezar el vídeo en las próximas horas, no "por si acaso" o para varios días después.
+- **Cuándo liberar una reserva**: en cuanto sepas que no vas a poder terminarlo (cambio de planes, el vídeo da problemas, te quedas sin horas esa semana) — usa el botón "Liberar reserva" para que otro compañero pueda tomarlo.
+- **Cuándo no reservar más vídeos**: si ya tienes uno reservado sin terminar, no reserves otro. Un vídeo, termínalo, el siguiente.
+- **Si un vídeo presenta problemas** (enlace roto, vídeo corrupto, sin contenido reproducible): libera la reserva y avisa a Rodrigo con el ID del vídeo — no lo dejes reservado indefinidamente ni intentes forzarlo.
 
-El botón **Abrir en Gradio** ya lleva incorporados el vídeo, tu nombre y el identificador correcto — no necesitas copiar ni pegar nada manualmente. Si el botón no aparece, es que el vídeo no está reservado a tu nombre.
+## Uso de Gradio
 
-## Cómo estilizar (los 5 pasos)
+- **Cómo abrirlo**: desde el botón "Abrir en Gradio" del vídeo que tienes reservado. No necesitas copiar ni pegar ningún enlace ni identificador a mano.
+- **Cómo cargar el vídeo**: el vídeo ya viene precargado al abrir Gradio desde el catálogo; pulsa "Analizar vídeo" y elige el fotograma que mejor representa la escena.
+- **Cómo generar el estilizado**: paso 03 (imagen) elige estilo y modelo, genera la imagen; paso 04 (V2V) genera el vídeo estilizado a partir de esa imagen. El paso 04 tarda más — no cierres la pestaña mientras genera.
+- **Qué revisar antes de guardar**: que el resultado corresponde realmente al vídeo original (fácil confundirse si tienes varias pestañas de Gradio abiertas), que el estilo aplicado es el correcto, y que el vídeo generado se ve bien (sin artefactos raros, cortes o errores visuales evidentes).
+- **Errores habituales que pueden aparecer**:
+  - La generación falla con un mensaje de error de la IA — puedes reintentar una vez; si vuelve a fallar, repórtalo a Rodrigo con el ID del vídeo, no sigas reintentando indefinidamente.
+  - El botón de guardar da un aviso de "faltan campos obligatorios" — revisa que Mapa y Especie estén rellenos.
+  - El vídeo estilizado tarda mucho o parece congelado — espera un poco más antes de asumir que falló; si tras varios minutos no cambia nada, repórtalo.
 
-1. **01 Cargar** — el vídeo ya viene cargado desde el catálogo. Pulsa "Analizar vídeo" y elige el fotograma que mejor representa la escena.
-2. **02 Editar** (opcional) — solo si necesitas recortar el segmento a usar.
-3. **03 Imagen** — elige el estilo visual y el modelo de generación de imagen. Genera la imagen estilizada del fotograma elegido.
-4. **04 V2V** — genera el vídeo estilizado a partir de la imagen. Este paso tarda más — no cierres la pestaña mientras genera.
-5. **05 Guardar** — revisa los datos del vídeo (Mapa y Especie son obligatorios) y pulsa "Guardar y finalizar".
+## Control de calidad — antes de guardar, comprueba
 
-## Cuándo guardar
+- [ ] Vídeo correcto (es el que querías estilizar, no otro que tenías abierto en otra pestaña).
+- [ ] Mapa correcto.
+- [ ] Especie correcta.
+- [ ] Estilo correcto (el que corresponde a ese vídeo/mapa según lo acordado).
+- [ ] Metadatos completos (no solo los obligatorios — revisa género, cámara, etc. si aplica).
+- [ ] Vista previa revisada — has visto el resultado completo, no solo el primer fotograma.
 
-Solo pulsa "Guardar y finalizar" cuando:
-- El vídeo estilizado te convence (revisa el resultado antes, no guardes "a ciegas").
-- Los campos de Mapa y Especie están rellenos correctamente — la pantalla no te dejará avanzar sin ellos, pero revisa que el contenido sea correcto, no solo que esté relleno.
-- Has elegido el estilo correcto para ese vídeo (revisa las indicaciones del reparto semanal si el estilo viene especificado).
+## Comunicación con Rodrigo
 
-## Qué revisar antes de enviar
+Contacta con Rodrigo cuando:
+- No puedes iniciar sesión.
+- No aparecen tus reservas.
+- Falta un vídeo que deberías tener asignado.
+- Gradio falla repetidamente con el mismo vídeo.
+- No puedes guardar tu trabajo.
+- El estilizado sale corrupto o visiblemente mal generado.
+- Aparece cualquier error inesperado que no sepas interpretar.
 
-- Que el vídeo estilizado corresponde realmente al vídeo original (a veces se abren varias pestañas de Gradio a la vez — confirma que no estás guardando el trabajo de otro vídeo).
-- Que el prompt y el estilo elegido tienen sentido con lo que pediste generar.
-- Que Mapa y Especie coinciden con el vídeo real, no con el último que hiciste (es fácil dejarlos sin actualizar si trabajas varios seguidos).
-
-## Cuándo avisar a Rodrigo
-
-- Si un vídeo lleva reservado por otra persona más de 2-3 días sin que aparezca terminado — puede estar bloqueado sin que esa persona lo sepa.
-- Si Gradio da un error al generar (imagen o vídeo) que se repite más de una vez con el mismo vídeo.
-- Si ves un vídeo que "desapareció" del catálogo o del registro sin que tú lo hayas movido — es exactamente el tipo de incidencia que el sistema ya está registrando internamente (ver más abajo), pero avisar ayuda a diagnosticarlo más rápido.
-- Si necesitas acceso a algo que no tienes (por ejemplo, ver el trabajo de otra persona para coordinar un mapa compartido).
-
-## Cómo reportar errores
-
-1. Anota el **ID del vídeo** (aparece como `#NNN` en el catálogo o registro) y qué estabas haciendo exactamente.
-2. Haz una captura de pantalla del error si es posible.
-3. Repórtalo directamente a Rodrigo con esos dos datos — sin ellos es mucho más difícil rastrear qué pasó.
-4. Si el error ocurrió guardando o generando en Gradio, el sistema ya guarda un registro interno del error automáticamente — no necesitas hacer nada más técnico, solo avisar.
+**No contactéis directamente con Bruno salvo que Rodrigo os lo indique expresamente.** Rodrigo es quien filtra y escala las incidencias técnicas que de verdad necesitan a Bruno.
 
 ## Buenas prácticas
 
-- Un vídeo, una reserva, un estilo — no dupliques trabajo probando varios estilos "para ver cuál queda mejor" sin coordinarlo antes si el tiempo apremia.
-- Revisa el resultado antes de guardar — deshacer un guardado ya aprobado es más trabajo para todos que revisar 30 segundos antes.
-- Si terminas antes de lo previsto, mejor tomar el siguiente vídeo disponible que dejarlo para "luego" — reservas abandonadas ralentizan a todo el equipo.
-- Comunica cambios de disponibilidad (vacaciones, menos horas esa semana) cuanto antes, para que el reparto de la semana siguiente sea realista.
+- No reserves más vídeos de los que puedas completar en el tiempo que tienes disponible.
+- Revisa siempre el resultado antes de guardar.
+- Libera los vídeos que no puedas terminar — no los dejes "aparcados".
+- Informa las incidencias cuanto antes, no al final del día o de la semana.
+- Un vídeo, una reserva, un estilo — no dupliques trabajo probando varios estilos sin coordinarlo antes.
 
 ---
 
-## Reparto semanal del trabajo
+## Organización semanal
 
-El reparto **no usa cifras fijas** — se calcula proporcionalmente a las horas que cada persona tiene disponibles esa semana. Rodrigo solo necesita rellenar la columna de horas; el resto es una fórmula fija.
-
-### Cómo funciona
-
-1. Cada estilizador comunica sus horas disponibles para la semana (a Rodrigo, por el canal que uséis habitualmente).
-2. Rodrigo rellena la tabla de abajo con esas horas.
-3. La carga de cada persona esa semana es proporcional a su parte del total de horas del equipo:
+No hay cifras ni objetivos fijos — el reparto se calcula **únicamente a partir de la disponibilidad real** que cada persona comunique esa semana.
 
 ```
-carga_persona = (horas_persona / horas_totales_del_equipo) × vídeos_disponibles_esa_semana
+Disponibilidad semanal
+      ↓
+Calcular horas disponibles
+      ↓
+Asignar carga proporcional
+      ↓
+Enviar planificación semanal
+      ↓
+Seguimiento durante la semana
+      ↓
+Reasignar si alguien no puede completar su carga
 ```
 
-4. El reparto real en la aplicación se hace con el botón **"Repartir censo"** del panel de admin (`AsignarCensoView`), que reparte automáticamente en round-robin entre el equipo activo (`EQUIPO_ACTUAL` en el código) — la proporción de horas se usa para decidir **cuántas veces seguidas** repetir a alguien en ese reparto, o para ajustar manualmente si el reparto automático (que por defecto es a partes iguales) no refleja bien la disponibilidad real de la semana.
+1. **Disponibilidad semanal**: cada estilizador comunica a Rodrigo cuántas horas tiene disponibles esa semana.
+2. **Calcular horas disponibles**: Rodrigo suma el total de horas del equipo esa semana.
+3. **Asignar carga proporcional**: `carga_persona = (horas_persona ÷ horas_totales_del_equipo) × vídeos_disponibles_esa_semana`. Ni la cantidad de horas ni la cantidad de vídeos son fijas — cambian cada semana según lo que se comunique y lo que haya disponible en el censo.
+4. **Enviar planificación semanal**: Rodrigo comunica a cada persona su reparto orientativo para la semana.
+5. **Seguimiento durante la semana**: cada uno reserva y trabaja según lo acordado; Rodrigo revisa avances (ver `TEAM_LEAD_GUIDE.md`).
+6. **Reasignar si alguien no puede completar su carga**: si a mitad de semana alguien no va a poder terminar lo suyo, libera esas reservas y Rodrigo redistribuye entre el resto según la disponibilidad restante — no cifras nuevas inventadas, el mismo cálculo proporcional con los datos actualizados.
 
-### Plantilla — completar cada semana
+Esta plantilla queda lista para que Rodrigo **solo tenga que introducir las horas de cada persona** cada semana — el resto del cálculo es siempre el mismo.
 
-| Persona | Horas disponibles esta semana | % del total del equipo | Vídeos orientativos (si hay N disponibles) |
-|---|---:|---:|---:|
-| Fabio | _(Rodrigo rellena)_ | — | — |
-| Wilson | _(Rodrigo rellena)_ | — | — |
-| Katty | _(Rodrigo rellena)_ | — | — |
-| Olenka | _(Rodrigo rellena)_ | — | — |
-| Rodrigo (si estiliza esa semana) | _(Rodrigo rellena)_ | — | — |
-| **Total equipo** | **suma** | **100%** | — |
-
-**% del total del equipo** = horas de la persona ÷ total de horas del equipo × 100.
-**Vídeos orientativos** = ese % aplicado sobre cuántos vídeos del censo estén Disponibles esa semana (consultar el filtro "Estado: Disponible" del Catálogo).
-
-### Ejemplo (con cifras inventadas solo para ilustrar el cálculo, no para usar)
-
-Si Fabio comunica 20h, Wilson 10h, Katty 15h y Olenka 15h (total 60h), y hay 30 vídeos disponibles esa semana:
-- Fabio: 20/60 = 33% → ~10 vídeos
-- Wilson: 10/60 = 17% → ~5 vídeos
-- Katty: 15/60 = 25% → ~8 vídeos
-- Olenka: 15/60 = 25% → ~8 vídeos
-
-Esto es orientativo, no una cuota rígida — sirve para que el reparto manual (o los ajustes tras el "Repartir censo" automático) reflejen la disponibilidad real de cada semana, no una división igualitaria que no tiene en cuenta que alguien tiene menos horas esa semana.
+| Persona | Horas disponibles esta semana | % del total del equipo |
+|---|---:|---:|
+| Fabio | _(Rodrigo rellena)_ | — |
+| Wilson | _(Rodrigo rellena)_ | — |
+| Katty | _(Rodrigo rellena)_ | — |
+| Olenka | _(Rodrigo rellena)_ | — |
+| Rodrigo (si estiliza esa semana) | _(Rodrigo rellena)_ | — |
+| **Total equipo** | **suma** | **100%** |

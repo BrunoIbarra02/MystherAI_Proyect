@@ -72,12 +72,16 @@ Como `sync_sheets` hace `update_or_create` por `id_video_equipo`, cada fila nuev
 | Reservar un vídeo real del censo | ✅ 200, `reservado_por` y `reservado_por_user` correctos |
 | Liberar su propia reserva | ✅ 200 |
 | Editar su propia entrada de Registro | ✅ 200 |
+| Borrar su propia entrada de Registro | ✅ 204, confirmado que deja de existir |
+| Subir su propio avatar | ✅ 200, guardado correctamente |
 | Ver la Biblioteca compartida (lectura de registros ajenos) | ✅ 200 — intencional, es una galería de equipo |
-| **Editar el registro de otro miembro (Wilson)** | 🔴 **200 la primera vez — fuga de permisos real y explotada, ver §4** |
+| **Editar el registro de otro miembro (Wilson)** | 🔴 **200 la primera vez — fuga de permisos real y explotada, ver §4** (tras el fix: 403) |
+| **Borrar el registro de otro miembro** | ✅ tras el fix: 403, confirmado que el registro ajeno sigue existiendo |
 | Aprobar un registro | ✅ bloqueado, 403 |
 | Denegar un registro | ✅ bloqueado, 403 |
 | Repartir censo (`asignar-censo`) | ✅ bloqueado, 403 |
 | Acceder a `/admin/` de Django | ✅ bloqueado, redirect 302 a login |
+| Crear usuarios / modificar permisos | ✅ bloqueado — no existe ningún endpoint de API que lo permita a un no-staff; `/admin/` (único lugar donde se gestionan usuarios) también bloqueado |
 
 **Nota metodológica importante**: las primeras pruebas de "editar/borrar ajeno" hechas vía navegador (a través del proxy de Vite) dieron un falso negativo — Django ve toda petición proxiada como originada en `127.0.0.1`, que coincide con la excepción de "servicio interno" pensada para Gradio, y por tanto **bypassea cualquier permiso que dependa de esa excepción**, incluida la corrección aplicada. La prueba concluyente se hizo con `APIClient` de Django forzando `REMOTE_ADDR` a una IP externa simulada (`203.0.113.50`), que sí ejercita el permiso real. Cualquier prueba de permisos futura en este entorno debe tener esto en cuenta.
 
