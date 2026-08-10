@@ -1,12 +1,12 @@
 # 00 — Resumen general del proyecto
 
-Rama: `rodrigo/supabase-migration` · Fecha: 2026-08-05 · Estado: lista para revisión de Bruno, push pendiente de autorización explícita.
+Rama: `rodrigo/supabase-migration` · Última actualización: 2026-08-10 · Estado: publicada en `origin`, lista para PR a `main`.
 
 ## Qué es esta rama
 
-Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectura pública del catálogo (Issue 21), añade la pantalla de revisión de metadatos en Gradio, empieza la migración de `reservado_por` a una FK real (Issue 24), corrige las URLs muertas del ALB de AWS, y añade dos correcciones encontradas durante la QA de esta propia rama: un fix de desarrollo local y **un fix de seguridad real** (ver `01_QA_REPORT.md`).
+Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectura pública del catálogo (Issue 21), añade la pantalla de revisión de metadatos en Gradio, empieza la migración de `reservado_por` a una FK real (Issue 24), corrige las URLs muertas del ALB de AWS, y añade correcciones encontradas durante la QA de esta propia rama: un fix de desarrollo local, **un fix de seguridad real** (ver `01_QA_REPORT.md`), la key de Wavespeed renovada y probada, y el guardado permanente de los estilizados en **Supabase Storage**.
 
-13 commits sobre `main` — detalle en `10_ENTREGA_A_BRUNO.md`.
+15 commits sobre `main` — detalle en `10_ENTREGA_A_BRUNO.md`.
 
 ## Qué funciona (probado con evidencia real, no solo lectura de código)
 
@@ -26,9 +26,9 @@ Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectur
 
 ## Qué falta (bloqueos externos, fuera del alcance de esta rama)
 
-1. **Almacenamiento permanente en S3** — se encontró (con la generación real) que las URLs de Wavespeed caducan a los 7 días, y se corrigió el código para re-alojarlas en S3 antes de guardar. **Falta crear el bucket y las credenciales AWS** — no existe ninguna integración S3 reutilizable en el proyecto (verificado a fondo). Ver `06_WAVESPEED.md` para exactamente qué necesita crear/proporcionar Bruno. Hasta entonces, el guardado en Gradio queda bloqueado a propósito (con un mensaje claro) en vez de guardar URLs que van a caducar.
+1. **Almacenamiento permanente en Supabase Storage** — se encontró (con la generación real) que las URLs de Wavespeed caducan a los 7 días, y se corrigió el código para re-alojarlas en Supabase Storage (el mismo proyecto Supabase que ya usa `DATABASE_URL`, no AWS S3) antes de guardar. **Falta solo `SUPABASE_SERVICE_ROLE_KEY`** — es el proyecto Supabase propio de Rodrigo, así que no depende de Bruno; el bucket se crea solo la primera vez que se guarda. Ver `06_WAVESPEED.md` para el paso a paso exacto. Hasta que esa key esté puesta, el guardado en Gradio queda bloqueado a propósito (con un mensaje claro) en vez de guardar URLs que van a caducar.
 2. **Migración de usuarios de la Supabase antigua** — Bruno no tiene acceso a esa instancia ahora mismo. Procedimiento completo y probado (con datos ficticios), no ejecutado. Ver `05_MIGRACION_SUPABASE.md`.
-3. **3 validaciones de infraestructura de producción** (Cloud Run `SECRET_KEY`, proxy SSL real, despliegue Vercel) — requieren acceso que no está disponible desde este entorno. Ver `03_DESPLIEGUE.md`.
+3. **Validaciones de infraestructura de producción** (Cloud Run `SECRET_KEY`, proxy SSL real, despliegue Vercel, variables de Supabase en el entorno de Cloud Run) — requieren acceso que no está disponible desde este entorno. Ver `03_DESPLIEGUE.md`.
 
 ## Qué no depende de esta rama
 

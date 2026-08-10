@@ -38,8 +38,12 @@ class Command(BaseCommand):
             reservado_por_user__isnull=True,
         ).exclude(reservado_por__isnull=True).exclude(reservado_por='')
 
+        # Sin .iterator(): en producción DATABASE_URL pasa por el pooler de
+        # Supabase en modo transacción (pgbouncer), que no soporta cursores
+        # server-side -- confirmado al construir migrate_wavespeed_links.py
+        # (revienta con "InvalidCursorName"). El volumen no lo justifica.
         resueltos, sin_match = 0, {}
-        for video in pendientes.iterator():
+        for video in pendientes:
             user = resolve_by_display_name(video.reservado_por)
             if user:
                 resueltos += 1

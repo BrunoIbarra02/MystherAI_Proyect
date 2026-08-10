@@ -16,51 +16,82 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8080")
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 FFMPEG      = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 
-# ── Almacenamiento permanente (S3) ──────────────────────────────────────────
+# ── Almacenamiento permanente (Supabase Storage) ────────────────────────────
 # Los resultados de Wavespeed (imagen/video estilizados) viven en un bucket
 # de S3 DE WAVESPEED con una regla de ciclo de vida que los borra a los 7
 # días (header `x-amz-expiration`, confirmado con una generación real el
 # 2026-08-10). Antes de guardar en Registro, do_save() descarga ese
-# resultado y lo vuelve a subir aquí, a NUESTRO propio bucket, para que el
-# enlace guardado en la base de datos no caduque.
+# resultado y lo vuelve a subir a Supabase Storage -- el mismo proyecto
+# Supabase que ya usa la app como base de datos (ver DATABASE_URL) -- para
+# que el enlace guardado en la base de datos no caduque.
+#
+# Se usa la API REST de Storage directamente con `requests` (no el SDK
+# `supabase-py`) para no añadir una dependencia nueva: el proyecto ya usa
+# `requests` en todo el pipeline y la API de Storage es un simple
+# POST/PUT con dos cabeceras.
 #
 # Variables de entorno necesarias (ninguna tiene valor por defecto a
 # propósito -- sin ellas, do_save() bloquea el guardado con un error claro
 # en vez de guardar en silencio una URL que va a caducar):
-#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  (credenciales de un usuario/rol
-#       de IAM con permiso s3:PutObject sobre el bucket)
-#   AWS_S3_BUCKET       nombre del bucket donde se guardan los estilizados
-#   AWS_DEFAULT_REGION  región del bucket (ej. "eu-west-1")
-# Opcional:
-#   AWS_S3_PUBLIC_BASE_URL  si el bucket está detrás de un CDN/dominio propio
-#       (ej. "https://media.mystherai.com"); si no se define, se usa la URL
-#       pública estándar de S3 (requiere que el bucket permita lectura
-#       pública vía política de bucket -- este código NO fija ACLs objeto a
-#       objeto porque los buckets nuevos de S3 las tienen deshabilitadas por
-#       defecto desde 2023).
-S3_BUCKET     = os.environ.get("AWS_S3_BUCKET", "")
-S3_REGION     = os.environ.get("AWS_DEFAULT_REGION", "")
-S3_PUBLIC_URL = os.environ.get("AWS_S3_PUBLIC_BASE_URL", "")
+#   SUPABASE_URL               ej. "https://pmexbywkqnpbtlqemzkw.supabase.co"
+#       (mismo proyecto que DATABASE_URL: el ref va después de "postgres."
+#       en el usuario de la cadena de conexión)
+#   SUPABASE_SERVICE_ROLE_KEY  clave "service_role" (NO la "anon") del
+#       proyecto -- Dashboard de Supabase → Settings → API → Project API keys.
+#       Server-side only: nunca debe llegar al frontend.
+#   SUPABASE_STORAGE_BUCKET    nombre del bucket (ej. "estilizados"). Si no
+#       existe, se crea automáticamente como público en el primer guardado.
+SUPABASE_URL         = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_BUCKET      = os.environ.get("SUPABASE_STORAGE_BUCKET", "estilizados")
 
-def _s3_configurado():
-    return bool(S3_BUCKET and os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+_bucket_asegurado = False  # cache: solo intentamos crear el bucket una vez por proceso
 
-def persistir_en_s3(url_temporal, carpeta, video_id):
+def _supabase_configurado():
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
+
+def _asegurar_bucket_supabase():
+    """Crea el bucket en Supabase Storage si todavía no existe (idempotente).
+    Se ejecuta una sola vez por proceso -- si ya existe (caso normal tras la
+    primera vez), Supabase responde 400 "already exists" y simplemente se
+    ignora."""
+    global _bucket_asegurado
+    if _bucket_asegurado:
+        return
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Content-Type": "application/json",
+    }
+    try:
+        r = req.post(
+            f"{SUPABASE_URL}/storage/v1/bucket",
+            headers=headers,
+            json={"id": SUPABASE_BUCKET, "name": SUPABASE_BUCKET, "public": True},
+            timeout=15,
+        )
+        if r.status_code not in (200, 201) and "already exists" not in r.text.lower():
+            raise RuntimeError(f"No se pudo crear/verificar el bucket '{SUPABASE_BUCKET}': {r.status_code} {r.text[:200]}")
+    except req.RequestException as e:
+        raise RuntimeError(f"No se pudo contactar Supabase Storage para crear el bucket: {e}")
+    _bucket_asegurado = True
+
+def persistir_en_supabase(url_temporal, carpeta, video_id):
     """Descarga un resultado de Wavespeed (URL temporal, caduca a los 7 días)
-    y lo sube a nuestro bucket de S3, devolviendo la URL pública permanente.
+    y lo sube a Supabase Storage, devolviendo la URL pública permanente.
 
-    Lanza RuntimeError con un mensaje claro si S3 no está configurado o si
-    la subida falla -- nunca devuelve la URL temporal como si fuera válida,
-    porque eso es exactamente el bug que esto corrige."""
+    Lanza RuntimeError con un mensaje claro si Supabase Storage no está
+    configurado o si la subida falla -- nunca devuelve la URL temporal como
+    si fuera válida, porque eso es exactamente el bug que esto corrige."""
     if not url_temporal:
         return url_temporal
-    if not _s3_configurado():
+    if not _supabase_configurado():
         raise RuntimeError(
-            "Almacenamiento permanente no configurado (faltan AWS_ACCESS_KEY_ID / "
-            "AWS_SECRET_ACCESS_KEY / AWS_S3_BUCKET en el entorno). No se puede guardar "
-            "de forma segura: el resultado de Wavespeed caduca a los 7 días."
+            "Almacenamiento permanente no configurado (faltan SUPABASE_URL / "
+            "SUPABASE_SERVICE_ROLE_KEY en el entorno). No se puede guardar de forma "
+            "segura: el resultado de Wavespeed caduca a los 7 días."
         )
-    import boto3
+    _asegurar_bucket_supabase()
 
     local_path = dl_temp(url_temporal)
     ext = os.path.splitext(local_path)[1] or ".bin"
@@ -68,23 +99,27 @@ def persistir_en_s3(url_temporal, carpeta, video_id):
     key = f"estilizados/{video_id or 'sin_id'}/{carpeta}_{uuid.uuid4().hex}{ext}"
 
     try:
-        client_kwargs = {"region_name": S3_REGION} if S3_REGION else {}
-        s3 = boto3.client("s3", **client_kwargs)
-        s3.upload_file(local_path, S3_BUCKET, key, ExtraArgs={"ContentType": content_type})
-    except Exception as e:
-        # boto3/botocore lanzan varias familias de excepción distintas
-        # (ClientError, BotoCoreError, boto3.exceptions.S3UploadFailedError...)
-        # -- se capturan todas: cualquier fallo aquí debe bloquear el guardado
-        # con un mensaje claro, nunca dejar pasar la URL temporal en su lugar.
-        raise RuntimeError(f"Fallo al subir a S3 ({S3_BUCKET}/{key}): {e}")
+        with open(local_path, "rb") as f:
+            r = req.post(
+                f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{key}",
+                headers={
+                    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    "apikey": SUPABASE_SERVICE_KEY,
+                    "Content-Type": content_type,
+                    "x-upsert": "true",
+                },
+                data=f,
+                timeout=120,
+            )
+        if r.status_code not in (200, 201):
+            raise RuntimeError(f"Fallo al subir a Supabase Storage ({SUPABASE_BUCKET}/{key}): {r.status_code} {r.text[:300]}")
+    except req.RequestException as e:
+        raise RuntimeError(f"Fallo de conexión al subir a Supabase Storage ({SUPABASE_BUCKET}/{key}): {e}")
     finally:
         try: os.remove(local_path)
         except OSError: pass
 
-    if S3_PUBLIC_URL:
-        return f"{S3_PUBLIC_URL.rstrip('/')}/{key}"
-    region_part = f".{S3_REGION}" if S3_REGION and S3_REGION != "us-east-1" else ""
-    return f"https://{S3_BUCKET}.s3{region_part}.amazonaws.com/{key}"
+    return f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{key}"
 
 OUT_CAP = os.path.join(BASE_DIR, "outputs", "capturas")
 OUT_VID = os.path.join(BASE_DIR, "outputs", "videos")
@@ -313,13 +348,14 @@ def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url,
     if faltantes:
         return f"⚠ Faltan campos obligatorios: {', '.join(faltantes)}. Complétalos arriba antes de guardar."
 
-    # El resultado de Wavespeed caduca a los 7 días -- se re-aloja en S3
-    # ANTES de guardar en Registro, para que el enlace persistido no muera.
-    # Se hace aquí (al guardar), no en do_stylize/do_v2v, para no gastar
-    # almacenamiento en generaciones que el usuario acaba descartando.
+    # El resultado de Wavespeed caduca a los 7 días -- se re-aloja en
+    # Supabase Storage ANTES de guardar en Registro, para que el enlace
+    # persistido no muera. Se hace aquí (al guardar), no en do_stylize/do_v2v,
+    # para no gastar almacenamiento en generaciones que el usuario acaba
+    # descartando.
     try:
-        img_url_permanente = persistir_en_s3(img_url, "imagen", video_id)
-        vid_url_permanente = persistir_en_s3(vid_url, "video", video_id)
+        img_url_permanente = persistir_en_supabase(img_url, "imagen", video_id)
+        vid_url_permanente = persistir_en_supabase(vid_url, "video", video_id)
     except RuntimeError as e:
         return f"⚠ No se pudo guardar de forma permanente: {e}"
 

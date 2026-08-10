@@ -2,11 +2,11 @@
 
 ## Resumen
 
-Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectura pública del catálogo (Issue 21), añade la pantalla de revisión de metadatos en Gradio, empieza la migración de `reservado_por` a una FK real (Issue 24), y corrige las URLs muertas del ALB de AWS. Incluye además un fix de seguridad encontrado durante la QA de esta rama: cualquier miembro podía editar o borrar el trabajo ya aprobado de otro.
+Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectura pública del catálogo (Issue 21), añade la pantalla de revisión de metadatos en Gradio, empieza la migración de `reservado_por` a una FK real (Issue 24), y corrige las URLs muertas del ALB de AWS. Incluye además un fix de seguridad encontrado durante la QA de esta rama: cualquier miembro podía editar o borrar el trabajo ya aprobado de otro. Sobre eso: key de Wavespeed válida integrada y probada con generación real, y el resultado de Wavespeed (que caduca a los 7 días) ahora se re-aloja automáticamente en **Supabase Storage** antes de guardarse en Registro — con bloqueo explícito del guardado si el almacenamiento permanente no está configurado.
 
 ## Qué incluye
 
-13 commits — detalle completo en [`docs/10_ENTREGA_A_BRUNO.md`](./10_ENTREGA_A_BRUNO.md).
+15 commits — detalle completo en [`docs/10_ENTREGA_A_BRUNO.md`](./10_ENTREGA_A_BRUNO.md).
 
 ## Cómo se probó
 
@@ -18,18 +18,20 @@ Durante la prueba de permisos se confirmó y corrigió una fuga real: cualquier 
 
 ## Qué no se pudo probar
 
-- Generación real de imagen/vídeo (Wavespeed) — key rechazada por su propio servidor, investigación exhaustiva en `docs/06_WAVESPEED.md`.
+- Subida real a Supabase Storage — no existe todavía la clave `service_role` en este entorno. Lógica probada exhaustivamente contra un servidor que replica el contrato HTTP exacto de la API de Supabase Storage (ver `docs/06_WAVESPEED.md`); falta la validación contra el proyecto real.
 - 3 validaciones de infraestructura de producción (Cloud Run, Vercel) — requieren acceso que no está disponible desde este entorno, ver `docs/03_DESPLIEGUE.md`.
 - Migración de usuarios de la Supabase antigua — Bruno no tiene acceso ahora mismo, procedimiento listo en `docs/05_MIGRACION_SUPABASE.md`.
 
 ## Checklist
 
-- [x] Los 13 commits aplican limpio y son funcionales individualmente.
-- [x] Sin regresiones detectadas en el recorrido completo del producto.
+- [x] Los 15 commits aplican limpio y son funcionales individualmente.
+- [x] Sin regresiones detectadas en el recorrido completo del producto (incluye recorrido repetido tras el cambio de almacenamiento: login, censo, registro, reserva, permisos, guardado end-to-end simulado).
 - [x] Datos reales del censo cargados y auditados — 2 hallazgos de calidad de datos documentados (no de código).
-- [x] Fuga de permisos encontrada y corregida, con pruebas de los 4 escenarios relevantes.
+- [x] Fuga de permisos encontrada y corregida, con pruebas de los 4 escenarios relevantes — re-verificada en esta ronda simulando un cliente remoto real (no localhost).
 - [x] Documentación operativa completa para el equipo de estilizado y para Rodrigo.
-- [ ] Wavespeed API key — pendiente de Bruno.
+- [x] Wavespeed API key — válida, integrada y probada con generación real.
+- [x] Base de datos real auditada: 0 de 593 registros con URLs temporales de Wavespeed sin migrar (el guardado estuvo bloqueado hasta este fix, así que no llegó a persistirse ninguna).
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` — pendiente de Rodrigo (su propio proyecto, no depende de Bruno). Ver `docs/06_WAVESPEED.md`.
 - [ ] Export de usuarios de la Supabase antigua — pendiente de Bruno.
 - [ ] Validaciones de infraestructura — pendientes de acceso a Cloud Run/Vercel.
 

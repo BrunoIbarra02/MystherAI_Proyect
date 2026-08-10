@@ -11,7 +11,8 @@ Guía para llevar esta rama de "revisada y en `main`" a producción.
 
 - [ ] `SECRET_KEY` configurada con un valor real. Verificar en los logs de arranque que **no** aparece el aviso crítico añadido en `f0c399d`.
 - [ ] `DATABASE_URL` apunta al Postgres/Supabase correcto de producción.
-- [ ] `WAVESPEED_API_KEY` — pendiente de Bruno, ver `06_WAVESPEED.md`.
+- [ ] `WAVESPEED_API_KEY` — confirmar que la key vigente (ver `06_WAVESPEED.md`) está puesta en el entorno de producción, no solo en el `.env` local.
+- [ ] `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` en el servicio de Gradio — sin esto el guardado de estilizados queda bloqueado a propósito. Ver `06_WAVESPEED.md` para dónde obtener la key.
 - [ ] Confirmar que `SECURE_PROXY_SSL_HEADER` (commit `bcea197`) mantiene la sesión estable con el proxy real de Cloud Run — login y navegación sin desconexión intermitente.
 
 ## Variables de entorno — Vercel (frontend)
@@ -28,11 +29,12 @@ Guía para llevar esta rama de "revisada y en `main`" a producción.
 - [ ] `python manage.py showmigrations sheets users` confirma todo aplicado.
 - [ ] Corregir en la fuente (Sheets/CSV) el `ID DE VIDEO EQUIPO=192` duplicado — ver `01_QA_REPORT.md` §2.
 
-## Wavespeed
+## Wavespeed + Supabase Storage
 
-- [ ] Bruno renueva/confirma la key en el entorno de producción.
-- [ ] Probar una generación real (I2I) end-to-end en staging o producción antes de anunciar la herramienta al equipo.
-- [ ] Consolidar `gradio-service/.env` y el `.env` raíz en un único origen de verdad para la key.
+- [ ] Confirmar que la key de Wavespeed vigente está en el entorno de producción.
+- [ ] Poner `SUPABASE_SERVICE_ROLE_KEY` en el entorno de producción del servicio de Gradio (ver `06_WAVESPEED.md`).
+- [ ] Probar una generación real (I2I y V2V) end-to-end en staging o producción antes de anunciar la herramienta al equipo — confirmar que la URL guardada en Registro es `https://pmexbywkqnpbtlqemzkw.supabase.co/storage/v1/object/public/...`, no un dominio de Wavespeed.
+- [ ] Consolidar `gradio-service/.env` y el `.env` raíz en un único origen de verdad para las keys (Wavespeed y Supabase).
 
 ## Validación post-despliegue
 

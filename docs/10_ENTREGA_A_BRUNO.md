@@ -2,7 +2,7 @@
 
 ## Estado de la rama
 
-`rodrigo/supabase-migration`, 13 commits sobre `main`, working tree limpio, sin conflictos con `main` ni con `origin` (ver `01_QA_REPORT.md` y el estado de Git verificado antes de esta entrega). **No se ha hecho `push`** — todo vive en local, a la espera de tu autorización explícita.
+`rodrigo/supabase-migration`, publicada en `origin` (push hecho el 2026-08-10), working tree limpio, sin conflictos con `main`. Incluye además, sobre lo descrito abajo: una key de Wavespeed válida ya integrada y probada con generación real, y el guardado permanente de los estilizados migrado a **Supabase Storage** (mismo proyecto que ya usa `DATABASE_URL`) — ver `06_WAVESPEED.md` para el único paso que falta (una clave de Supabase) antes de que el equipo pueda guardar en producción.
 
 ## Qué se hizo
 
@@ -27,15 +27,15 @@ Durante las pruebas de permisos (creando una cuenta de prueba **completamente nu
 
 ## Qué NO pudo probarse
 
-- **Generación real de imagen/vídeo en Gradio** (Wavespeed) — key rechazada por el propio servidor de Wavespeed. Evidencia técnica exhaustiva en `06_WAVESPEED.md`. No es un problema de código.
+- **Subida real a Supabase Storage** — no existe todavía la clave `service_role` en este entorno. La lógica está probada exhaustivamente contra un servidor que replica el contrato HTTP exacto de la API de Supabase Storage (descarga, subida, creación de bucket, manejo de errores, sin dejar URLs temporales guardadas ni archivos huérfanos) — ver `06_WAVESPEED.md`.
 - **Infraestructura de producción real** (Cloud Run, Vercel) — sin acceso, no verificable desde aquí. Checklist exacta en `03_DESPLIEGUE.md`.
 - **Migración de usuarios** — no ejecutada porque no tienes acceso a la Supabase antigua ahora mismo. Procedimiento 100% listo en `05_MIGRACION_SUPABASE.md`.
 
 ## Qué queda pendiente
 
-1. Tú: renovar/confirmar la Wavespeed key (`06_WAVESPEED.md`).
+1. Rodrigo: poner `SUPABASE_SERVICE_ROLE_KEY` en local y en producción — es su propio proyecto Supabase, no depende de ti. Ver `06_WAVESPEED.md` para el paso a paso exacto. **Es el único bloqueo real para que el equipo pueda guardar estilizados hoy.**
 2. Tú: recuperar acceso a la Supabase antigua y generar el export de usuarios cuando puedas (`05_MIGRACION_SUPABASE.md`).
-3. Tú: las 3 validaciones de infraestructura de `03_DESPLIEGUE.md`.
+3. Tú: las validaciones de infraestructura de `03_DESPLIEGUE.md` (Cloud Run, Vercel, variables de entorno de producción).
 4. Alguien del equipo: corregir en la fuente (Sheets/CSV) el ID de censo duplicado que hace invisibles a 14 vídeos reales (`01_QA_REPORT.md` §2 — baja urgencia, son de un ex-empleado, pero hay que arreglarlo antes de que le pase a un vídeo activo).
 5. Deuda técnica no bloqueante listada en `01_QA_REPORT.md` §6.
 

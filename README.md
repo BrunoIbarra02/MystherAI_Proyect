@@ -92,10 +92,15 @@ Siempre un **tag único** (hash de git) + **nueva revisión de task definition**
 
 ## Base de datos (Supabase) — leer antes de diagnosticar nada
 
-La BD es el proyecto Supabase **PORTAL AUTH** (ref `lncvnhgzoxxjdcesofxg`, org MystherIA). Se conecta
-por `DATABASE_URL` con `dj_database_url`. **Supabase es solo Postgres aquí**: no se usa el cliente JS,
-ni Supabase Auth, ni variables `NEXT_PUBLIC_SUPABASE_*` — la autenticación es la de Django. Los
-quickstarts que ofrece el dashboard de Supabase son de Next.js y no aplican a este stack.
+La BD es el proyecto Supabase ref `pmexbywkqnpbtlqemzkw` (creado por Rodrigo para sustituir el
+proyecto **PORTAL AUTH** de Bruno, ref `lncvnhgzoxxjdcesofxg`, que se congeló por inactividad —
+ese ref antiguo queda solo como referencia histórica, ya no está en uso; `.mcp.json` todavía lo
+referencia y debe actualizarse si se reconfigura el MCP de Supabase). Se conecta por `DATABASE_URL`
+con `dj_database_url`. **Supabase es Postgres + Storage aquí**: no se usa el cliente JS, ni Supabase
+Auth, ni variables `NEXT_PUBLIC_SUPABASE_*` — la autenticación es la de Django. Los quickstarts que
+ofrece el dashboard de Supabase son de Next.js y no aplican a este stack. Storage sí se usa desde
+`gradio-service` para alojar de forma permanente los estilizados generados por Wavespeed — ver
+`docs/06_WAVESPEED.md`.
 
 ### Si la web "pierde los videos" o "las contraseñas fallan"
 
@@ -119,7 +124,7 @@ variable de repositorio `BACKEND_URL`). La solución definitiva es **pasar Supab
 
 ## Problemas conocidos / en validación
 
-- **Miniaturas rotas en registros antiguos**: algunos registros muestran el video/imagen en blanco. Hipótesis: las URLs de salida de WaveSpeed (CloudFront) pueden ser temporales y expirar — no hay re-subida a almacenamiento permanente (S3/Drive) al momento de guardar. Usar el filtro **"⚠ SIN VIDEO"** en "Estilizados Equipo" (`/profile`) para ubicar estos registros.
+- **Miniaturas rotas en registros antiguos**: algunos registros muestran el video/imagen en blanco. Confirmado (2026-08-10): las URLs de salida de WaveSpeed caducan a los 7 días (`x-amz-expiration`). Corregido para guardados nuevos — `gradio-service` ahora re-aloja el resultado en Supabase Storage antes de guardar en Registro (`docs/06_WAVESPEED.md`); los registros antiguos afectados ya no tienen arreglo posible porque la URL de origen en WaveSpeed ya expiró (verificado: 0 registros en la BD real quedaron con URL temporal, porque el guardado estuvo bloqueado hasta este fix — ver `docs/06_WAVESPEED.md`). Usar el filtro **"⚠ SIN VIDEO"** en "Estilizados Equipo" (`/profile`) para ubicar estos registros.
 - Ver Issues del repositorio para el resto de tareas activas.
 
 ## Stack
