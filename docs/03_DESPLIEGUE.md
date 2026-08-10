@@ -12,7 +12,7 @@ Guía para llevar esta rama de "revisada y en `main`" a producción.
 - [ ] `SECRET_KEY` configurada con un valor real. Verificar en los logs de arranque que **no** aparece el aviso crítico añadido en `f0c399d`.
 - [ ] `DATABASE_URL` apunta al Postgres/Supabase correcto de producción.
 - [ ] `WAVESPEED_API_KEY` — confirmar que la key vigente (ver `06_WAVESPEED.md`) está puesta en el entorno de producción, no solo en el `.env` local.
-- [ ] `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` en el servicio de Gradio — sin esto el guardado de estilizados queda bloqueado a propósito. Ver `06_WAVESPEED.md` para dónde obtener la key.
+- [ ] `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` en el servicio de Gradio — sin esto el guardado de estilizados queda bloqueado a propósito. Es el Supabase de Rodrigo (no el tuyo antiguo) — él te entrega los tres valores directamente, tú los pegas aquí porque el acceso a Cloud Run es tuyo. Ver `06_WAVESPEED.md`.
 - [ ] Confirmar que `SECURE_PROXY_SSL_HEADER` (commit `bcea197`) mantiene la sesión estable con el proxy real de Cloud Run — login y navegación sin desconexión intermitente.
 
 ## Variables de entorno — Vercel (frontend)

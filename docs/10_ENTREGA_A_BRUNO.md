@@ -32,7 +32,7 @@ Durante las pruebas de permisos (creando una cuenta de prueba **completamente nu
 
 ## Qué queda pendiente
 
-1. Rodrigo: poner `SUPABASE_SERVICE_ROLE_KEY` en el entorno de producción de Cloud Run (ya la tiene puesta y probada en local, ver `06_WAVESPEED.md`). **Es el único bloqueo real para que el equipo pueda guardar estilizados hoy en producción.**
+1. **Tú (Bruno)**: poner `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_STORAGE_BUCKET=estilizados` en el entorno de producción de Cloud Run (servicio de Gradio) — es tu infraestructura, solo tú tienes acceso. Rodrigo te pasa los tres valores directamente (no por email/chat abierto — es una clave sensible). Ya están puestas y probadas en local con generación real, ver `06_WAVESPEED.md`. **Es el único bloqueo real para que el equipo pueda guardar estilizados hoy en producción.**
 2. Tú: recuperar acceso a la Supabase antigua y generar el export de usuarios cuando puedas (`05_MIGRACION_SUPABASE.md`).
 3. Tú: las validaciones de infraestructura de `03_DESPLIEGUE.md` (Cloud Run, Vercel, variables de entorno de producción).
 4. Alguien del equipo: corregir en la fuente (Sheets/CSV) el ID de censo duplicado que hace invisibles a 14 vídeos reales (`01_QA_REPORT.md` §2 — baja urgencia, son de un ex-empleado, pero hay que arreglarlo antes de que le pase a un vídeo activo).

@@ -27,7 +27,7 @@ Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectur
 
 ## Qué falta (bloqueos externos, fuera del alcance de esta rama)
 
-1. **`SUPABASE_SERVICE_ROLE_KEY` en producción** — ya probada y funcionando en local contra el proyecto Supabase real de Rodrigo. Solo falta ponerla en el entorno de Cloud Run. Ver `06_WAVESPEED.md`. Hasta entonces, el guardado en Gradio en producción queda bloqueado a propósito (con un mensaje claro) en vez de guardar URLs que van a caducar.
+1. **`SUPABASE_SERVICE_ROLE_KEY` en producción** — ya probada y funcionando en local contra el proyecto Supabase real de Rodrigo. Solo falta que **Bruno** la ponga en el entorno de Cloud Run (es su acceso, no el de Rodrigo) — Rodrigo le entrega los valores directamente. Ver `06_WAVESPEED.md`. Hasta entonces, el guardado en Gradio en producción queda bloqueado a propósito (con un mensaje claro) en vez de guardar URLs que van a caducar.
 2. **Migración de usuarios de la Supabase antigua** — Bruno no tiene acceso a esa instancia ahora mismo. Procedimiento completo y probado (con datos ficticios), no ejecutado. Ver `05_MIGRACION_SUPABASE.md`.
 3. **Validaciones de infraestructura de producción** (Cloud Run `SECRET_KEY`, proxy SSL real, despliegue Vercel, variables de Supabase en el entorno de Cloud Run) — requieren acceso que no está disponible desde este entorno. Ver `03_DESPLIEGUE.md`.
 

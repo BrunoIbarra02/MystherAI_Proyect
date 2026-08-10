@@ -31,7 +31,7 @@ Durante la prueba de permisos se confirmó y corrigió una fuga real: cualquier 
 - [x] Wavespeed API key — válida, integrada y probada con generación real.
 - [x] Base de datos real auditada: 0 de 593 registros con URLs temporales de Wavespeed sin migrar (el guardado estuvo bloqueado hasta este fix, así que no llegó a persistirse ninguna).
 - [x] Guardado permanente en Supabase Storage probado en vivo contra el proyecto real: generación I2I real, subida real, guardado real en Registro vía el backend real, reproducción verificada byte a byte. Bucket real limpiado tras la prueba.
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` en el entorno de producción (Cloud Run) — pendiente de Rodrigo, ya la tiene puesta en local.
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` en el entorno de producción (Cloud Run) — pendiente de Bruno (solo él tiene acceso a Cloud Run); Rodrigo ya la tiene puesta y probada en local y le entrega los valores directamente.
 - [ ] Export de usuarios de la Supabase antigua — pendiente de Bruno.
 - [ ] Validaciones de infraestructura — pendientes de acceso a Cloud Run/Vercel.
 

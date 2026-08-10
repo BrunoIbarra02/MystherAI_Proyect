@@ -48,7 +48,7 @@ El proyecto ya usa Supabase como base de datos (`DATABASE_URL`, ref `pmexbywkqnp
 
 **Resuelto en local.** Rodrigo proporcionó la `service_role` key el 2026-08-10; está puesta en `.env` (raíz) y `gradio-service/.env` locales (ambas gitignored, nunca se sube al repo) y probada en vivo contra el proyecto real (ver arriba). El bucket `estilizados` ya existe (público) en el proyecto real.
 
-**Pendiente solo en producción**: poner las mismas tres variables (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET=estilizados`) en el entorno de Cloud Run del servicio de Gradio — ver `03_DESPLIEGUE.md`. Sin esto en producción, **el guardado en Gradio queda bloqueado a propósito** en ese entorno — es preferible que nadie pueda guardar a que se sigan guardando URLs que van a caducar en 7 días.
+**Pendiente solo en producción**: poner las mismas tres variables (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET=estilizados`) en el entorno de Cloud Run del servicio de Gradio — ver `03_DESPLIEGUE.md`. Esto lo tiene que hacer **Bruno**: es su infraestructura de Cloud Run, Rodrigo no tiene acceso ahí. Rodrigo le entrega los tres valores directamente (no por email/chat abierto). Sin esto en producción, **el guardado en Gradio queda bloqueado a propósito** en ese entorno — es preferible que nadie pueda guardar a que se sigan guardando URLs que van a caducar en 7 días.
 
 ---
 
