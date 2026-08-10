@@ -6,7 +6,7 @@ Rama: `rodrigo/supabase-migration` · Última actualización: 2026-08-10 · Esta
 
 Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectura pública del catálogo (Issue 21), añade la pantalla de revisión de metadatos en Gradio, empieza la migración de `reservado_por` a una FK real (Issue 24), corrige las URLs muertas del ALB de AWS, y añade correcciones encontradas durante la QA de esta propia rama: un fix de desarrollo local, **un fix de seguridad real** (ver `01_QA_REPORT.md`), la key de Wavespeed renovada y probada, y el guardado permanente de los estilizados en **Supabase Storage**.
 
-15 commits sobre `main` — detalle en `10_ENTREGA_A_BRUNO.md`.
+17 commits sobre `main` — detalle en `10_ENTREGA_A_BRUNO.md`.
 
 ## Qué funciona (probado con evidencia real, no solo lectura de código)
 

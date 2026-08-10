@@ -6,7 +6,7 @@ Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectur
 
 ## Qué incluye
 
-15 commits — detalle completo en [`docs/10_ENTREGA_A_BRUNO.md`](./10_ENTREGA_A_BRUNO.md).
+17 commits — detalle completo en [`docs/10_ENTREGA_A_BRUNO.md`](./10_ENTREGA_A_BRUNO.md).
 
 ## Cómo se probó
 
@@ -24,7 +24,7 @@ Durante la prueba de permisos se confirmó y corrigió una fuga real: cualquier 
 
 ## Checklist
 
-- [x] Los 15 commits aplican limpio y son funcionales individualmente.
+- [x] Los 17 commits aplican limpio y son funcionales individualmente.
 - [x] Sin regresiones detectadas en el recorrido completo del producto (incluye recorrido repetido tras el cambio de almacenamiento: login, censo, registro, reserva, permisos, guardado end-to-end simulado).
 - [x] Datos reales del censo cargados y auditados — 2 hallazgos de calidad de datos documentados (no de código).
 - [x] Fuga de permisos encontrada y corregida, con pruebas de los 4 escenarios relevantes — re-verificada en esta ronda simulando un cliente remoto real (no localhost).
