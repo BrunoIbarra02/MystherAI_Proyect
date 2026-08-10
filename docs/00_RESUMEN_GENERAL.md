@@ -23,10 +23,11 @@ Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectur
 - Todos los permisos de administrador (panel `/admin/`, aprobar, denegar, repartir censo, ver todo).
 - Todas las restricciones de un estilizador nuevo (no puede aprobar, denegar, repartir, administrar, ni tocar trabajo ajeno).
 - **Generación real de imagen y vídeo con Wavespeed** — probado de extremo a extremo el 2026-08-10 con una key válida (I2I y V2V reales, guardado, aparición en Registro, aprobación).
+- **Guardado permanente en Supabase Storage** — probado en vivo el mismo día contra el proyecto Supabase real: bucket creado, imagen real de Wavespeed subida y verificada reproducible, registro guardado vía el backend real con la URL permanente.
 
 ## Qué falta (bloqueos externos, fuera del alcance de esta rama)
 
-1. **Almacenamiento permanente en Supabase Storage** — se encontró (con la generación real) que las URLs de Wavespeed caducan a los 7 días, y se corrigió el código para re-alojarlas en Supabase Storage (el mismo proyecto Supabase que ya usa `DATABASE_URL`, no AWS S3) antes de guardar. **Falta solo `SUPABASE_SERVICE_ROLE_KEY`** — es el proyecto Supabase propio de Rodrigo, así que no depende de Bruno; el bucket se crea solo la primera vez que se guarda. Ver `06_WAVESPEED.md` para el paso a paso exacto. Hasta que esa key esté puesta, el guardado en Gradio queda bloqueado a propósito (con un mensaje claro) en vez de guardar URLs que van a caducar.
+1. **`SUPABASE_SERVICE_ROLE_KEY` en producción** — ya probada y funcionando en local contra el proyecto Supabase real de Rodrigo. Solo falta ponerla en el entorno de Cloud Run. Ver `06_WAVESPEED.md`. Hasta entonces, el guardado en Gradio en producción queda bloqueado a propósito (con un mensaje claro) en vez de guardar URLs que van a caducar.
 2. **Migración de usuarios de la Supabase antigua** — Bruno no tiene acceso a esa instancia ahora mismo. Procedimiento completo y probado (con datos ficticios), no ejecutado. Ver `05_MIGRACION_SUPABASE.md`.
 3. **Validaciones de infraestructura de producción** (Cloud Run `SECRET_KEY`, proxy SSL real, despliegue Vercel, variables de Supabase en el entorno de Cloud Run) — requieren acceso que no está disponible desde este entorno. Ver `03_DESPLIEGUE.md`.
 

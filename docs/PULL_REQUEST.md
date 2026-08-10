@@ -18,8 +18,7 @@ Durante la prueba de permisos se confirmó y corrigió una fuga real: cualquier 
 
 ## Qué no se pudo probar
 
-- Subida real a Supabase Storage — no existe todavía la clave `service_role` en este entorno. Lógica probada exhaustivamente contra un servidor que replica el contrato HTTP exacto de la API de Supabase Storage (ver `docs/06_WAVESPEED.md`); falta la validación contra el proyecto real.
-- 3 validaciones de infraestructura de producción (Cloud Run, Vercel) — requieren acceso que no está disponible desde este entorno, ver `docs/03_DESPLIEGUE.md`.
+- Variables de producción en Cloud Run/Vercel — requieren acceso que no está disponible desde este entorno, ver `docs/03_DESPLIEGUE.md`. La subida a Supabase Storage sí se probó en vivo contra el proyecto real (ver `docs/06_WAVESPEED.md`), solo falta poner la key en el entorno de producción.
 - Migración de usuarios de la Supabase antigua — Bruno no tiene acceso ahora mismo, procedimiento listo en `docs/05_MIGRACION_SUPABASE.md`.
 
 ## Checklist
@@ -31,7 +30,8 @@ Durante la prueba de permisos se confirmó y corrigió una fuga real: cualquier 
 - [x] Documentación operativa completa para el equipo de estilizado y para Rodrigo.
 - [x] Wavespeed API key — válida, integrada y probada con generación real.
 - [x] Base de datos real auditada: 0 de 593 registros con URLs temporales de Wavespeed sin migrar (el guardado estuvo bloqueado hasta este fix, así que no llegó a persistirse ninguna).
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` — pendiente de Rodrigo (su propio proyecto, no depende de Bruno). Ver `docs/06_WAVESPEED.md`.
+- [x] Guardado permanente en Supabase Storage probado en vivo contra el proyecto real: generación I2I real, subida real, guardado real en Registro vía el backend real, reproducción verificada byte a byte. Bucket real limpiado tras la prueba.
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` en el entorno de producción (Cloud Run) — pendiente de Rodrigo, ya la tiene puesta en local.
 - [ ] Export de usuarios de la Supabase antigua — pendiente de Bruno.
 - [ ] Validaciones de infraestructura — pendientes de acceso a Cloud Run/Vercel.
 

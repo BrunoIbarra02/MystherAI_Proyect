@@ -31,25 +31,24 @@ Primera versión: `persistir_en_s3()`, un bucket de AWS S3 nuevo y separado. Se 
 - La API de Storage responde error al subir (probado con 500 simulado) → bloquea con el error real, mismo comportamiento seguro, sin dejar archivos temporales huérfanos.
 - Subida correcta (probado con servidor simulado) → cabeceras `Authorization`/`apikey`/`Content-Type`/`x-upsert` correctas, bytes íntegros, bucket creado una sola vez (idempotente en llamadas siguientes), URL pública con el formato esperado.
 
-**No se ha podido probar contra el Supabase real** porque no existe todavía la clave `service_role` en este entorno — ver siguiente sección. La lógica de la función sí está verificada end-to-end contra un servidor que replica exactamente el contrato HTTP de la API de Supabase Storage.
+**Probado en vivo contra el Supabase real** el mismo día, en cuanto Rodrigo proporcionó la `service_role` key:
+- Bucket `estilizados` creado de verdad en el proyecto real (`pmexbywkqnpbtlqemzkw`), público.
+- Generación I2I real con Wavespeed (`google/nano-banana-2-lite/edit`, a partir de `logo.jpeg`) → resultado real con `x-amz-expiration` de 7 días confirmado de nuevo en las cabeceras (el bug exacto que motiva este fix).
+- `persistir_en_supabase()` descargó ese resultado real (1.7 MB) y lo subió al Supabase Storage real → verificado con `GET` sobre la URL pública: `200`, bytes idénticos byte a byte, `Content-Type: image/png` correcto.
+- `do_save()` completo contra el **backend Django real** (apuntando a una copia aislada de la BD de QA, no a producción): creó el registro en Registro con la URL permanente de Supabase, verificada reproducible.
+- Ruta de vídeo (`Content-Type: video/mp4`) verificada también contra el Supabase real.
+- Una generación V2V *fresca* en esta sesión falló por timeout de **red local** subiendo el vídeo de origen al endpoint de `cl.upload()` del propio SDK de Wavespeed — no es código de este fix; la generación V2V con esta key ya se había probado real horas antes en la misma sesión (ver arriba), no es una incógnita nueva.
+- Los objetos de prueba se borraron del bucket real al terminar.
 
 ### Por qué Supabase Storage y no S3
 
 El proyecto ya usa Supabase como base de datos (`DATABASE_URL`, ref `pmexbywkqnpbtlqemzkw` — ver corrección de referencia obsoleta en `README.md`). Supabase incluye Storage (compatible S3 por dentro, pero con su propia API REST simple) en el mismo proyecto, sin coste ni proveedor adicional. No tiene sentido mantener AWS S3 como servicio aparte solo para esto.
 
-## Qué necesita hacer Rodrigo para activar el guardado permanente
+## Estado de la key de Supabase Storage
 
-Es un proyecto Supabase propio (creado por Rodrigo para sustituir el de Bruno, que se congeló — ver contexto en `00_RESUMEN_GENERAL.md`), así que esto no depende de terceros:
+**Resuelto en local.** Rodrigo proporcionó la `service_role` key el 2026-08-10; está puesta en `.env` (raíz) y `gradio-service/.env` locales (ambas gitignored, nunca se sube al repo) y probada en vivo contra el proyecto real (ver arriba). El bucket `estilizados` ya existe (público) en el proyecto real.
 
-1. Entrar a [supabase.com/dashboard](https://supabase.com/dashboard) → proyecto con ref `pmexbywkqnpbtlqemzkw` → **Settings → API**.
-2. Copiar la clave **`service_role`** (⚠️ no la `anon` — la `service_role` es la única con permiso de escritura en Storage desde el backend; nunca debe usarse en el frontend).
-3. Ponerla como `SUPABASE_SERVICE_ROLE_KEY` en:
-   - `.env` (raíz) y `gradio-service/.env` en local — ya están preparados con `SUPABASE_URL=https://pmexbywkqnpbtlqemzkw.supabase.co` y `SUPABASE_STORAGE_BUCKET=estilizados`, solo falta el valor de la key.
-   - Las mismas tres variables en el entorno de producción de Cloud Run (servicio de Gradio).
-4. No hace falta crear el bucket a mano — `persistir_en_supabase()` lo crea automáticamente (público) la primera vez que alguien guarda un estilizado, si `SUPABASE_STORAGE_BUCKET` (por defecto `estilizados`) todavía no existe.
-5. Una vez puesta la key, probar un guardado real (I2I o V2V) y confirmar que la URL guardada en Registro empieza por `https://pmexbywkqnpbtlqemzkw.supabase.co/storage/v1/object/public/estilizados/...` en vez de un dominio de Wavespeed.
-
-Mientras `SUPABASE_SERVICE_ROLE_KEY` no esté puesta, **el guardado en Gradio queda bloqueado a propósito** — es preferible que nadie pueda guardar a que se sigan guardando URLs que van a caducar en 7 días.
+**Pendiente solo en producción**: poner las mismas tres variables (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET=estilizados`) en el entorno de Cloud Run del servicio de Gradio — ver `03_DESPLIEGUE.md`. Sin esto en producción, **el guardado en Gradio queda bloqueado a propósito** en ese entorno — es preferible que nadie pueda guardar a que se sigan guardando URLs que van a caducar en 7 días.
 
 ---
 

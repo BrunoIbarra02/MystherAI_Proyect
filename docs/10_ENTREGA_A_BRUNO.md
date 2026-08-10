@@ -27,13 +27,12 @@ Durante las pruebas de permisos (creando una cuenta de prueba **completamente nu
 
 ## Qué NO pudo probarse
 
-- **Subida real a Supabase Storage** — no existe todavía la clave `service_role` en este entorno. La lógica está probada exhaustivamente contra un servidor que replica el contrato HTTP exacto de la API de Supabase Storage (descarga, subida, creación de bucket, manejo de errores, sin dejar URLs temporales guardadas ni archivos huérfanos) — ver `06_WAVESPEED.md`.
-- **Infraestructura de producción real** (Cloud Run, Vercel) — sin acceso, no verificable desde aquí. Checklist exacta en `03_DESPLIEGUE.md`.
+- **Infraestructura de producción real** (Cloud Run, Vercel) — sin acceso, no verificable desde aquí. Checklist exacta en `03_DESPLIEGUE.md`. El guardado en Supabase Storage sí se probó en vivo contra el proyecto real (ver `06_WAVESPEED.md`), solo falta poner la key en el entorno de producción.
 - **Migración de usuarios** — no ejecutada porque no tienes acceso a la Supabase antigua ahora mismo. Procedimiento 100% listo en `05_MIGRACION_SUPABASE.md`.
 
 ## Qué queda pendiente
 
-1. Rodrigo: poner `SUPABASE_SERVICE_ROLE_KEY` en local y en producción — es su propio proyecto Supabase, no depende de ti. Ver `06_WAVESPEED.md` para el paso a paso exacto. **Es el único bloqueo real para que el equipo pueda guardar estilizados hoy.**
+1. Rodrigo: poner `SUPABASE_SERVICE_ROLE_KEY` en el entorno de producción de Cloud Run (ya la tiene puesta y probada en local, ver `06_WAVESPEED.md`). **Es el único bloqueo real para que el equipo pueda guardar estilizados hoy en producción.**
 2. Tú: recuperar acceso a la Supabase antigua y generar el export de usuarios cuando puedas (`05_MIGRACION_SUPABASE.md`).
 3. Tú: las validaciones de infraestructura de `03_DESPLIEGUE.md` (Cloud Run, Vercel, variables de entorno de producción).
 4. Alguien del equipo: corregir en la fuente (Sheets/CSV) el ID de censo duplicado que hace invisibles a 14 vídeos reales (`01_QA_REPORT.md` §2 — baja urgencia, son de un ex-empleado, pero hay que arreglarlo antes de que le pase a un vídeo activo).
