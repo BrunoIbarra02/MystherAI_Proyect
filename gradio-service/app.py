@@ -2,7 +2,7 @@
 MYSTHERIAI STUDIO
 Pipeline: 01 CARGAR → [02 EDITAR] → 03 IMAGEN → 04 V2V → GUARDAR
 """
-import os, re, datetime, subprocess, base64, shutil
+import os, re, datetime, subprocess, base64, shutil, uuid, mimetypes
 import requests as req
 import cv2
 import wavespeed
@@ -15,6 +15,76 @@ DEFAULT_KEY = os.environ.get("WAVESPEED_API_KEY", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8080")
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 FFMPEG      = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
+
+# ── Almacenamiento permanente (S3) ──────────────────────────────────────────
+# Los resultados de Wavespeed (imagen/video estilizados) viven en un bucket
+# de S3 DE WAVESPEED con una regla de ciclo de vida que los borra a los 7
+# días (header `x-amz-expiration`, confirmado con una generación real el
+# 2026-08-10). Antes de guardar en Registro, do_save() descarga ese
+# resultado y lo vuelve a subir aquí, a NUESTRO propio bucket, para que el
+# enlace guardado en la base de datos no caduque.
+#
+# Variables de entorno necesarias (ninguna tiene valor por defecto a
+# propósito -- sin ellas, do_save() bloquea el guardado con un error claro
+# en vez de guardar en silencio una URL que va a caducar):
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  (credenciales de un usuario/rol
+#       de IAM con permiso s3:PutObject sobre el bucket)
+#   AWS_S3_BUCKET       nombre del bucket donde se guardan los estilizados
+#   AWS_DEFAULT_REGION  región del bucket (ej. "eu-west-1")
+# Opcional:
+#   AWS_S3_PUBLIC_BASE_URL  si el bucket está detrás de un CDN/dominio propio
+#       (ej. "https://media.mystherai.com"); si no se define, se usa la URL
+#       pública estándar de S3 (requiere que el bucket permita lectura
+#       pública vía política de bucket -- este código NO fija ACLs objeto a
+#       objeto porque los buckets nuevos de S3 las tienen deshabilitadas por
+#       defecto desde 2023).
+S3_BUCKET     = os.environ.get("AWS_S3_BUCKET", "")
+S3_REGION     = os.environ.get("AWS_DEFAULT_REGION", "")
+S3_PUBLIC_URL = os.environ.get("AWS_S3_PUBLIC_BASE_URL", "")
+
+def _s3_configurado():
+    return bool(S3_BUCKET and os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+
+def persistir_en_s3(url_temporal, carpeta, video_id):
+    """Descarga un resultado de Wavespeed (URL temporal, caduca a los 7 días)
+    y lo sube a nuestro bucket de S3, devolviendo la URL pública permanente.
+
+    Lanza RuntimeError con un mensaje claro si S3 no está configurado o si
+    la subida falla -- nunca devuelve la URL temporal como si fuera válida,
+    porque eso es exactamente el bug que esto corrige."""
+    if not url_temporal:
+        return url_temporal
+    if not _s3_configurado():
+        raise RuntimeError(
+            "Almacenamiento permanente no configurado (faltan AWS_ACCESS_KEY_ID / "
+            "AWS_SECRET_ACCESS_KEY / AWS_S3_BUCKET en el entorno). No se puede guardar "
+            "de forma segura: el resultado de Wavespeed caduca a los 7 días."
+        )
+    import boto3
+
+    local_path = dl_temp(url_temporal)
+    ext = os.path.splitext(local_path)[1] or ".bin"
+    content_type = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
+    key = f"estilizados/{video_id or 'sin_id'}/{carpeta}_{uuid.uuid4().hex}{ext}"
+
+    try:
+        client_kwargs = {"region_name": S3_REGION} if S3_REGION else {}
+        s3 = boto3.client("s3", **client_kwargs)
+        s3.upload_file(local_path, S3_BUCKET, key, ExtraArgs={"ContentType": content_type})
+    except Exception as e:
+        # boto3/botocore lanzan varias familias de excepción distintas
+        # (ClientError, BotoCoreError, boto3.exceptions.S3UploadFailedError...)
+        # -- se capturan todas: cualquier fallo aquí debe bloquear el guardado
+        # con un mensaje claro, nunca dejar pasar la URL temporal en su lugar.
+        raise RuntimeError(f"Fallo al subir a S3 ({S3_BUCKET}/{key}): {e}")
+    finally:
+        try: os.remove(local_path)
+        except OSError: pass
+
+    if S3_PUBLIC_URL:
+        return f"{S3_PUBLIC_URL.rstrip('/')}/{key}"
+    region_part = f".{S3_REGION}" if S3_REGION and S3_REGION != "us-east-1" else ""
+    return f"https://{S3_BUCKET}.s3{region_part}.amazonaws.com/{key}"
 
 OUT_CAP = os.path.join(BASE_DIR, "outputs", "capturas")
 OUT_VID = os.path.join(BASE_DIR, "outputs", "videos")
@@ -242,6 +312,17 @@ def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url,
     faltantes = [n for n, v in [("MAPA", mapa), ("ESPECIE", especie)] if not str(v or "").strip()]
     if faltantes:
         return f"⚠ Faltan campos obligatorios: {', '.join(faltantes)}. Complétalos arriba antes de guardar."
+
+    # El resultado de Wavespeed caduca a los 7 días -- se re-aloja en S3
+    # ANTES de guardar en Registro, para que el enlace persistido no muera.
+    # Se hace aquí (al guardar), no en do_stylize/do_v2v, para no gastar
+    # almacenamiento en generaciones que el usuario acaba descartando.
+    try:
+        img_url_permanente = persistir_en_s3(img_url, "imagen", video_id)
+        vid_url_permanente = persistir_en_s3(vid_url, "video", video_id)
+    except RuntimeError as e:
+        return f"⚠ No se pudo guardar de forma permanente: {e}"
+
     try:
         r = req.post(f"{BACKEND_URL}/api/sheets/videos/", json={
             "video_id":            str(video_id).strip(),
@@ -249,9 +330,9 @@ def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url,
             "usuario":             miembro,
             "estilizado":          estilo,
             "prompt_imagen":       prompt_img,
-            "imagen_link":         img_url,
+            "imagen_link":         img_url_permanente,
             "prompt_video":        prompt_vid,
-            "drive_link":          vid_url,
+            "drive_link":          vid_url_permanente,
             "video_original_link": orig_url,
             "estado_revision":     "Pendiente",
             "mapa":                mapa,

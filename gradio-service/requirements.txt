@@ -6,3 +6,4 @@ wavespeed
 gunicorn>=21.0.0
 uvicorn[standard]>=0.29.0
 flask>=3.0.0
+boto3>=1.43.0

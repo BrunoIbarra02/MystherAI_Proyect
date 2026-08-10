@@ -111,15 +111,37 @@ Validado de punta a punta en sesión anterior con evidencia de navegador real (n
 6. El registro aparece en `/registro` y en el panel de aprobación de admin.
 7. Aprobación desde la cuenta de Rodrigo → 200.
 
-**Único punto no ejercitable de extremo a extremo**: generación real de imagen/vídeo (pasos 03/04 de Gradio) — bloqueada por la API key de Wavespeed, ver `TECHNICAL_REPORT.md` para la evidencia técnica completa de por qué esto no es un problema de conexión del código.
+**Actualización 2026-08-10**: se consiguió una API key de Wavespeed válida y se completó este punto con una generación real — ver §6.
 
-## 6. Resumen de hallazgos
+## 6. Generación real con Wavespeed (2026-08-10)
+
+Con la key nueva (ver `06_WAVESPEED.md`), se repitió el recorrido completo incluyendo generación real:
+
+1. Vídeo real del censo (`Base militar` original tenía el Drive roto — 404 confirmado con `curl`, dato preexistente; se usó otro vídeo real del censo con enlace vivo).
+2. Análisis real: 208 fotogramas detectados.
+3. **Imagen estilizada real** (Nano Banana Lite) — resultado: `https://d2h7xmz5gqybh9.cloudfront.net/output/....png`.
+4. **Vídeo estilizado real** (WAN 2.1 480p, ~2 min) — resultado: `https://d2h7xmz5gqybh9.cloudfront.net/output/....mp4`.
+5. Pantalla de metadatos precargada automáticamente desde el censo real (mapa, especie, duración, cámara, plano, interior, acción).
+6. Guardado → verificado directamente en base de datos, no solo en pantalla.
+7. Aparece en Registro vía la interfaz real (`ID: 490 — Fabio • Castillo ruina`).
+8. Aprobado como Rodrigo → `200`.
+
+### Hallazgo crítico: las URLs de Wavespeed caducan a los 7 días
+
+Cabeceras HTTP reales de ambos resultados:
+```
+x-amz-expiration: expiry-date="Tue, 18 Aug 2026 00:00:00 GMT", rule-id="expire-output-7days"
+```
+La aplicación guardaba esa URL temporal directamente en `imagen_link`/`drive_link` — confirmado en base de datos sobre el registro guardado (pk 604). **Corregido** en esta misma sesión: ver `06_WAVESPEED.md` para el detalle completo del fix (`persistir_en_s3()` en `gradio-service/app.py`) y de qué depende para activarse en producción (bucket S3 + credenciales, pendientes de Bruno).
+
+## 7. Resumen de hallazgos
 
 | # | Hallazgo | Severidad | Estado |
 |---|---|---|---|
 | 1 | Editar/borrar registro ajeno sin restricción | 🔴 Alta | **Corregido** (`4b438b1`) |
 | 2 | 15 filas con `ID DE VIDEO EQUIPO=192` duplicado en `censo.csv` (14 vídeos reales invisibles) | 🟡 Media | Documentado, requiere corrección en la fuente por Bruno/equipo |
-| 3 | 1 fila de censo sin `LINK` (vídeo sin reproducir) | 🟢 Baja | Documentado, dato de origen incompleto |
-| 4 | Wavespeed API key rechazada (401) | 🔴 Alta | Bloqueo externo — Bruno |
-| 5 | `GOOGLE_SHEETS_CREDENTIALS_PATH`/`GOOGLE_DRIVE_FOLDER_ID` declaradas pero sin uso en el código | 🟢 Baja | Configuración muerta, candidata a limpieza |
-| 6 | Migración `users/0002_add_avatar` con SQL específico de Postgres, rompe en SQLite | 🟡 Media | Documentado, preexistente |
+| 3 | 1 fila de censo sin `LINK` (vídeo sin reproducir), y por separado el vídeo `id_video_equipo=1` con Drive roto (404) | 🟢 Baja | Documentado, datos de origen incompletos/rotos |
+| 4 | Wavespeed API key rechazada (401) | 🔴 Alta | **Resuelto** — key nueva integrada y probada con generación real (2026-08-10) |
+| 5 | URLs de resultado de Wavespeed caducan a los 7 días, se guardaban tal cual en la base de datos | 🔴 Alta | **Corregido** (persistencia a S3 en `do_save`) — activación pendiente de credenciales S3 (Bruno) |
+| 6 | `GOOGLE_SHEETS_CREDENTIALS_PATH`/`GOOGLE_DRIVE_FOLDER_ID` declaradas pero sin uso en el código | 🟢 Baja | Configuración muerta, candidata a limpieza |
+| 7 | Migración `users/0002_add_avatar` con SQL específico de Postgres, rompe en SQLite | 🟡 Media | Documentado, preexistente |

@@ -22,10 +22,11 @@ Cierra el diagnóstico de vídeos "desaparecidos" del Registro, cierra la lectur
 - Editar/borrar el propio trabajo — y **no poder** editar/borrar el ajeno (fix de esta rama).
 - Todos los permisos de administrador (panel `/admin/`, aprobar, denegar, repartir censo, ver todo).
 - Todas las restricciones de un estilizador nuevo (no puede aprobar, denegar, repartir, administrar, ni tocar trabajo ajeno).
+- **Generación real de imagen y vídeo con Wavespeed** — probado de extremo a extremo el 2026-08-10 con una key válida (I2I y V2V reales, guardado, aparición en Registro, aprobación).
 
 ## Qué falta (bloqueos externos, fuera del alcance de esta rama)
 
-1. **Wavespeed** — la API key es rechazada por el propio servidor de Wavespeed. Ver `06_WAVESPEED.md`. Responsabilidad exclusiva de Bruno.
+1. **Almacenamiento permanente en S3** — se encontró (con la generación real) que las URLs de Wavespeed caducan a los 7 días, y se corrigió el código para re-alojarlas en S3 antes de guardar. **Falta crear el bucket y las credenciales AWS** — no existe ninguna integración S3 reutilizable en el proyecto (verificado a fondo). Ver `06_WAVESPEED.md` para exactamente qué necesita crear/proporcionar Bruno. Hasta entonces, el guardado en Gradio queda bloqueado a propósito (con un mensaje claro) en vez de guardar URLs que van a caducar.
 2. **Migración de usuarios de la Supabase antigua** — Bruno no tiene acceso a esa instancia ahora mismo. Procedimiento completo y probado (con datos ficticios), no ejecutado. Ver `05_MIGRACION_SUPABASE.md`.
 3. **3 validaciones de infraestructura de producción** (Cloud Run `SECRET_KEY`, proxy SSL real, despliegue Vercel) — requieren acceso que no está disponible desde este entorno. Ver `03_DESPLIEGUE.md`.
 
