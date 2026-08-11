@@ -10,7 +10,9 @@ import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useApiKey } from '../context/ApiKeyContext';
 
-const GRADIO_BASE = 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860';
+// Issue 13/20: ver VideoGalleryLayout.jsx — apuntaba al ALB de AWS muerto por
+// HTTP. Configurable por env var, con el dominio que el backend ya espera.
+const GRADIO_BASE = import.meta.env.VITE_GRADIO_URL || 'https://gradio.mystherai.com';
 
 // Mismo criterio que VideoGalleryLayout: con el mínimo de 25 caracteres, IDs de
 // Drive válidos se descartaban y el video no se veía en el perfil pero sí en el censo.

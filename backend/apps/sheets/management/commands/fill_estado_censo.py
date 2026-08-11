@@ -12,6 +12,7 @@ import os
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from apps.sheets.models import VideoMetadata
+from apps.users.utils import resolve_by_display_name
 
 
 class Command(BaseCommand):
@@ -79,7 +80,8 @@ class Command(BaseCommand):
                     miembro_name = stylized[key]
                     qs.filter(
                         Q(estado_censo__isnull=True) | Q(estado_censo='') | Q(estado_censo='Disponible')
-                    ).update(estado_censo='Estilizado', reservado_por=miembro_name)
+                    ).update(estado_censo='Estilizado', reservado_por=miembro_name,
+                             reservado_por_user=resolve_by_display_name(miembro_name))
                     updated_est += qs.count()
                 else:
                     # Only set to Disponible if not already Reservado/Estilizado

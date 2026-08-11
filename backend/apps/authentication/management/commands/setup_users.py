@@ -125,7 +125,7 @@ class Command(BaseCommand):
             for nombre in ADMINS_QUE_NO_ESTILIZAN:
                 freed = VideoMetadata.objects.filter(
                     tipo='censo', estado_censo='Reservado', reservado_por__iexact=nombre
-                ).update(estado_censo='Disponible', reservado_por=None)
+                ).update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
                 if freed:
                     self.stdout.write(f'Liberadas {freed} reservas de {nombre}')
         except Exception as e:

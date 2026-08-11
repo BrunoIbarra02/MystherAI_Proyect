@@ -5,7 +5,13 @@ import api from '../utils/api';
 import { useApiKey } from '../context/ApiKeyContext';
 import { useUser } from '../context/UserContext';
 
-const GRADIO_BASE = 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860';
+// Issue 13/20: apuntaba al load balancer de AWS por HTTP, que quedó muerto
+// tras migrar a Cloud Run — causaba tanto el enlace roto como mixed content
+// (la app se sirve por HTTPS). settings.py ya tiene "https://gradio.mystherai.com"
+// en CORS_ALLOWED_ORIGINS, así que es el dominio que el backend espera.
+// Configurable por env var para no volver a hardcodear un backend que puede
+// cambiar de sitio otra vez.
+const GRADIO_BASE = import.meta.env.VITE_GRADIO_URL || 'https://gradio.mystherai.com';
 
 // Placeholder local. Antes apuntaba a via.placeholder.com, que dejó de resolver
 // DNS: cada tarjeta sin ID de Drive mostraba una imagen rota en vez del cartel.

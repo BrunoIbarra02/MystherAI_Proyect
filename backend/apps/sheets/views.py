@@ -21,14 +21,22 @@ def es_servicio_interno(request):
 
 
 class PuedeEscribirVideos(permissions.BasePermission):
-    """Lectura para cualquiera; escritura solo para usuarios con sesión
-    o para el servicio interno de Gradio (localhost)."""
+    """Lectura y escritura requieren sesión de usuario, salvo el servicio
+    interno de Gradio (localhost), que puede leer y escribir sin sesión.
 
-    message = 'Necesitas iniciar sesión para modificar videos.'
+    Issue 21: antes la lectura (GET) estaba abierta a CUALQUIERA sin
+    autenticar (SAFE_METHODS devolvía True siempre) — el catálogo, el
+    registro, los prompts y los enlaces de Drive de todo el equipo eran
+    accesibles sin login por cualquiera que conociera la URL de la API,
+    aunque el frontend obliga a iniciar sesión para verlos (ProtectedRoute
+    en App.jsx). Esto no es una web pública (ver contexto del proyecto), así
+    que se cierra ese hueco: ahora hace falta sesión o ser el servicio
+    interno, igual que para escribir.
+    """
+
+    message = 'Necesitas iniciar sesión para acceder a este recurso.'
 
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
         return bool(request.user and request.user.is_authenticated) or es_servicio_interno(request)
 
 
@@ -39,6 +47,39 @@ class EsAdmin(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+
+
+class PuedeEscribirSuPropioRegistro(PuedeEscribirVideos):
+    """Como PuedeEscribirVideos, pero además exige propiedad para editar/borrar
+    una fila de Registro (README: "Solo pueden editar/borrar sus propias
+    entradas de registro (no las de otras)"). Ese requisito nunca estaba
+    implementado: cualquier usuario logueado podía editar o borrar el trabajo
+    ya aprobado de cualquier otro miembro vía PUT/PATCH/DELETE en
+    /api/sheets/videos/<pk>/ (confirmado en pruebas — ver QA_REPORT.md).
+
+    Lectura (GET) sigue abierta a todo el equipo: la Biblioteca es
+    deliberadamente compartida, no es a lo que se refiere el requisito.
+    Staff y el servicio interno de Gradio quedan exentos, como siempre.
+    """
+
+    message = 'Solo puedes editar o borrar tus propias entradas de Registro.'
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if es_servicio_interno(request):
+            return True
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.is_staff:
+            return True
+        if obj.tipo != 'registro':
+            # Las filas de censo no tienen dueño individual; solo staff
+            # o el servicio interno pueden mutarlas por esta vía.
+            return False
+        nombre = (user.first_name or user.username.split('@')[0] or '').strip().lower()
+        return bool(nombre) and (obj.usuario or '').strip().lower() == nombre
 
 
 # ==========================================
@@ -78,10 +119,13 @@ class VideoListView(generics.ListCreateAPIView):
 class VideoDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = VideoMetadata.objects.all()
     serializer_class = VideoMetadataSerializer
-    permission_classes = [PuedeEscribirVideos]
+    permission_classes = [PuedeEscribirSuPropioRegistro]
 
 
 class FilterOptionsView(APIView):
+    # No declaraba permission_classes -> heredaba el AllowAny global (Issue 21).
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         tipo = request.query_params.get('tipo', 'censo').lower()
         if tipo == 'censo':
@@ -130,7 +174,9 @@ class AutoRegisterVideoView(APIView):
 # ==========================================
 
 class CensoSummaryView(APIView):
-    permission_classes = []
+    # Issue 21: era publica (permission_classes = []) pese a estar detras
+    # de ProtectedRoute en el frontend.
+    permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
         import csv
@@ -538,7 +584,8 @@ class RegistroSummaryView(APIView):
     Vista que analiza el Excel de Registro de Parámetros (Fase 2 — Estilizado)
     y devuelve todas las métricas de balance del dataset para el nuevo Dashboard.
     """
-    permission_classes = []
+    # Issue 21: era publica pese a estar detras de ProtectedRoute en el frontend.
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         import openpyxl
@@ -569,7 +616,6 @@ class RegistroSummaryView(APIView):
             productor    = str(row[2]).strip() if row[2] else ''
             estilo       = str(row[3]).strip() if row[3] else ''
             prompt_vid   = str(row[6]).strip() if row[6] else ''
-            img_link     = str(row[5]).strip() if row[5] else ''
             aceptado_raw = str(row[9]).strip() if row[9] else ''
             prompt_final   = str(row[10]).strip() if len(row) > 10 and row[10] else ''
             img_arreglo    = str(row[12]).strip() if len(row) > 12 and row[12] else ''
@@ -1480,7 +1526,8 @@ class ReservarVideoView(APIView):
 
         video.estado_censo = 'Reservado'
         video.reservado_por = nombre
-        video.save(update_fields=['estado_censo', 'reservado_por'])
+        video.reservado_por_user = request.user
+        video.save(update_fields=['estado_censo', 'reservado_por', 'reservado_por_user'])
         return Response({'ok': True, 'estado': 'Reservado', 'reservado_por': nombre,
                          'drive_link': video.drive_link, 'video_id': video.video_id},
                         status=status.HTTP_200_OK)
@@ -1512,7 +1559,8 @@ class LiberarVideoView(APIView):
 
         video.estado_censo = 'Disponible'
         video.reservado_por = None
-        video.save(update_fields=['estado_censo', 'reservado_por'])
+        video.reservado_por_user = None
+        video.save(update_fields=['estado_censo', 'reservado_por', 'reservado_por_user'])
         return Response({'ok': True, 'estado': 'Disponible'}, status=status.HTTP_200_OK)
 
 
@@ -1545,9 +1593,14 @@ class AsignarCensoView(APIView):
     permission_classes = [EsAdmin]
 
     def post(self, request):
+        from apps.users.utils import resolve_by_display_name
+
         members = EQUIPO_ACTUAL
         if not members:
             return Response({'error': 'No hay miembros de equipo configurados.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Resolver una vez por nombre -> User, para no repetir la consulta N veces.
+        member_users = {m: resolve_by_display_name(m) for m in members}
 
         # 1. Reclamar reservas que no pertenecen a nadie del equipo actual
         q_equipo = Q()
@@ -1555,7 +1608,7 @@ class AsignarCensoView(APIView):
             q_equipo |= Q(reservado_por__iexact=m)
         reclamados = VideoMetadata.objects.filter(
             tipo='censo', estado_censo='Reservado'
-        ).exclude(q_equipo).update(estado_censo='Disponible', reservado_por=None)
+        ).exclude(q_equipo).update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
 
         # 2. Repartir todo lo Disponible entre el equipo actual
         disponibles = list(
@@ -1566,7 +1619,7 @@ class AsignarCensoView(APIView):
         for i, vid_pk in enumerate(disponibles):
             member = members[i % len(members)]
             VideoMetadata.objects.filter(pk=vid_pk).update(
-                estado_censo='Reservado', reservado_por=member)
+                estado_censo='Reservado', reservado_por=member, reservado_por_user=member_users[member])
             detalle[member] += 1
 
         return Response({
@@ -1630,7 +1683,7 @@ class DenegarVideoView(APIView):
             ).filter(
                 Q(video_id=registro.video_id) |
                 Q(id_video_equipo=registro.video_id)
-            ).update(estado_censo='Disponible', reservado_por=None)
+            ).update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
 
         return Response({'ok': True, 'estado_revision': 'Rechazado',
                          'censo_liberado': censo_liberado}, status=status.HTTP_200_OK)

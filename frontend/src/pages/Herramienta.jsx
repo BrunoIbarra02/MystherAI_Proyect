@@ -2,7 +2,9 @@ import React from "react";
 import AppNavbar from "../components/AppNavbar";
 import logoImg from "../assets/logo.jpeg";
 
-const GRADIO_URL = "http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860/";
+// Issue 13/20: ver VideoGalleryLayout.jsx — apuntaba al ALB de AWS muerto por
+// HTTP. Configurable por env var, con el dominio que el backend ya espera.
+const GRADIO_URL = import.meta.env.VITE_GRADIO_URL || "https://gradio.mystherai.com";
 
 const Herramienta = () => {
   return (
