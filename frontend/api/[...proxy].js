@@ -1,10 +1,9 @@
-// Issue 13/20: esta constante apuntaba al load balancer de AWS (HTTP, no
-// HTTPS), que quedó muerto tras migrar todo a Cloud Run + Supabase nueva —
-// causaba tanto peticiones fallidas como mixed content. Ahora usa la misma
-// URL de Cloud Run que el vercel.json de la raíz del repo (que es el que
-// realmente controla el deploy), y es configurable por variable de entorno
-// para no volver a quedar hardcodeada si el backend cambia de sitio otra vez.
-const BACKEND = process.env.BACKEND_URL || 'https://mystherai-proyect-18030869294.europe-west1.run.app';
+// Backend en AWS ECS/Fargate detrás del ALB. El ALB solo tiene listener HTTP;
+// no es problema de mixed content porque este proxy corre server-side (el
+// navegador solo habla HTTPS con Vercel). Cloud Run quedó descartado — se
+// volvió a AWS el 2026-08-11 porque el servicio de Cloud Run estaba caído (503).
+// Configurable por BACKEND_URL para no quedar hardcodeado si el backend se mueve.
+const BACKEND = process.env.BACKEND_URL || 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com';
 
 module.exports = async function handler(req, res) {
   // req.url inside a catch-all function is the matched segment(s) only.

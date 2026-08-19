@@ -4,7 +4,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://mystherai-proyect-18030869294.europe-west1.run.app/api/$1"
+      "dest": "http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com/api/$1"
     },
     {
       "handle": "filesystem"
