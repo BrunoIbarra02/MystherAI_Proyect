@@ -69,15 +69,39 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
     return id ? `https://drive.google.com/file/d/${id}/preview` : null;
   }, [extractDriveID]);
 
+  // URL de imagen directa (Supabase Storage, CloudFront, o cualquier .png/.jpg…).
+  // Los estilizados nuevos se guardan en Supabase, que NO es Drive: sin esto
+  // caían al placeholder aunque la imagen existiera.
+  const isDirectImage = useCallback((url) => {
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
+    if (url.includes('drive.google.com')) return false;
+    return /\.(png|jpe?g|webp|gif|bmp)(\?|$)/i.test(url)
+      || url.includes('/storage/v1/object/')  // Supabase Storage
+      || url.includes('cloudfront.net');
+  }, []);
+
   const getThumbnailUrl = useCallback((url) => {
     const id = extractDriveID(url);
-    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w600` : PLACEHOLDER_SIN_VIDEO;
-  }, [extractDriveID]);
+    if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w600`;
+    if (isDirectImage(url)) return url;
+    return PLACEHOLDER_SIN_VIDEO;
+  }, [extractDriveID, isDirectImage]);
+
+  // Mejor miniatura disponible: la imagen estilizada (imagen_link) si es
+  // visualizable, si no la del video (drive_link).
+  const getCardThumb = useCallback((v) => {
+    for (const u of [v.imagen_link, v.drive_link]) {
+      if (extractDriveID(u) || isDirectImage(u)) return getThumbnailUrl(u);
+    }
+    return PLACEHOLDER_SIN_VIDEO;
+  }, [extractDriveID, isDirectImage, getThumbnailUrl]);
 
   const getHighResUrl = useCallback((url) => {
     const id = extractDriveID(url);
-    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : null;
-  }, [extractDriveID]);
+    if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w1600`;
+    if (isDirectImage(url)) return url;
+    return null;
+  }, [extractDriveID, isDirectImage]);
 
   const fetchVideos = useCallback(async () => {
     try {
@@ -351,14 +375,16 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                 <div key={v.id} className="yt-card" onClick={() => { setSelectedVideo(v); setIsEditingInside(false); }}>
                   <div className="yt-thumbnail">
                     <img
-                      src={getThumbnailUrl(v.drive_link)}
+                      src={getCardThumb(v)}
                       alt={`Video ${v.video_id}`}
                       className="yt-thumb-img"
                       onError={(e) => {
                         const el = e.currentTarget;
-                        if (el.dataset.tried !== 'imagen' && v.imagen_link && extractDriveID(v.imagen_link)) {
-                          el.dataset.tried = 'imagen';
-                          el.src = getThumbnailUrl(v.imagen_link);
+                        // fallback 1: la otra fuente (imagen_link ↔ drive_link)
+                        const alt = getThumbnailUrl(v.drive_link);
+                        if (el.dataset.tried !== 'alt' && alt !== PLACEHOLDER_SIN_VIDEO && el.src !== alt) {
+                          el.dataset.tried = 'alt';
+                          el.src = alt;
                         } else {
                           el.style.display = 'none';
                           const fb = el.nextSibling;
@@ -492,6 +518,9 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                     style={{ border: 'none' }}
                     title="Reproductor de Video">
                   </iframe>
+                ) : (selectedVideo.drive_link && selectedVideo.drive_link.startsWith('http') && !selectedVideo.drive_link.includes('drive.google.com')) ? (
+                  // Video estilizado en Supabase/CloudFront: reproducir directo
+                  <video src={selectedVideo.drive_link} controls style={{ width: '100%', maxHeight: '400px', borderRadius: '8px', background: '#000' }} />
                 ) : (
                   <div className="modal-player-placeholder">
                     <p>El enlace no contiene un ID válido de Drive o el archivo no está público.</p>
@@ -563,7 +592,7 @@ const VideoGalleryLayout = ({ tipo, titulo }) => {
                         {selectedVideo.imagen_link && (
                           <div className="detail-section">
                             <label style={{ color: 'gray' }}>IMAGEN DE REFERENCIA</label>
-                            {extractDriveID(selectedVideo.imagen_link) ? (
+                            {(extractDriveID(selectedVideo.imagen_link) || isDirectImage(selectedVideo.imagen_link)) ? (
                               <div style={{ position: 'relative', marginTop: '10px', cursor: 'zoom-in' }} onClick={() => openZoomModal(getHighResUrl(selectedVideo.imagen_link) || getThumbnailUrl(selectedVideo.imagen_link))}>
                                 <img
                                   src={getThumbnailUrl(selectedVideo.imagen_link)}

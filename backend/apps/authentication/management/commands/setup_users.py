@@ -132,5 +132,20 @@ class Command(BaseCommand):
                 ).update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
                 if freed:
                     self.stdout.write(f'Liberadas {freed} reservas de {nombre}')
+
+            # Auto-reclaim de reservas fantasma: cualquier reservado_por que NO
+            # sea un estilizador actual (no-staff en ACCOUNTS) vuelve a Disponible.
+            # Así las reservas de ex-empleados/cuentas fantasma nunca persisten.
+            from django.db.models import Q
+            estilizadores = [n for (_e, n, staff, _s) in ACCOUNTS if not staff]
+            q_validos = Q()
+            for n in estilizadores:
+                q_validos |= Q(reservado_por__iexact=n)
+            fantasmas = (VideoMetadata.objects
+                         .filter(tipo='censo', estado_censo='Reservado')
+                         .exclude(q_validos))
+            n_fant = fantasmas.update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
+            if n_fant:
+                self.stdout.write(f'Reclamadas {n_fant} reservas de nombres fantasma/ex-empleados')
         except Exception as e:
             self.stdout.write(f'No se pudieron liberar reservas: {e}')
