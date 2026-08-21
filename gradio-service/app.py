@@ -201,6 +201,64 @@ def on_load(request: gr.Request):
     video_id  = request.query_params.get("video_id", "")
     return DEFAULT_KEY, video_url, usuario, video_id
 
+# ── Cola de reservados del miembro (interconexión web ↔ Gradio) ──────────────
+def fetch_reservas(usuario):
+    """Videos de censo que este miembro tiene reservados y aún no ha estilizado.
+    Gradio corre en el mismo contenedor que Django, así que llama a localhost
+    (servicio interno, sin sesión)."""
+    if not usuario:
+        return []
+    try:
+        r = req.get(f"{BACKEND_URL}/api/sheets/videos/",
+                    params={"tipo": "censo", "estado_censo": "Reservado", "reservado_por": usuario},
+                    timeout=8)
+        return r.json() if r.status_code == 200 else []
+    except Exception:
+        return []
+
+def _reserva_choices(usuario):
+    """[(label, value)] para el Dropdown. value = 'pk\\tvideo_id\\tmapa\\tdrive_link'."""
+    choices = []
+    for v in fetch_reservas(usuario):
+        vid  = str(v.get("video_id") or v.get("id") or "")
+        mapa = str(v.get("mapa") or "")
+        label = vid + (f"  ·  {mapa}" if mapa else "")
+        value = f"{v.get('id')}\t{vid}\t{mapa}\t{v.get('drive_link') or ''}"
+        choices.append((label, value))
+    return choices
+
+def _thumb_html(url, caption=""):
+    fid = _drive_id(url)
+    if fid:
+        src = f"https://drive.google.com/thumbnail?id={fid}&sz=w640"
+        return (f'<div style="text-align:center;padding:6px">'
+                f'<img src="{src}" style="max-width:100%;max-height:300px;border-radius:10px;'
+                f'border:1px solid #1c1c1c" onerror="this.style.display=\'none\'"/>'
+                f'<div style="color:#666;font-size:12px;margin-top:8px;letter-spacing:1px">{caption}</div></div>')
+    if url:
+        return (f'<div style="text-align:center;color:#888;padding:40px;border:1px solid #1c1c1c;'
+                f'border-radius:10px">Video seleccionado<div style="font-size:11px;color:#555;margin-top:6px">{caption}</div></div>')
+    return ('<div style="text-align:center;color:#444;padding:60px 20px;border:1px dashed #2a2a2a;'
+            'border-radius:10px;font-size:13px">Elige uno de tus videos reservados abajo  ↓</div>')
+
+def cargar_reservas(usuario):
+    """Rellena el dropdown con la cola del miembro. Se llama al entrar y al refrescar."""
+    choices = _reserva_choices(usuario)
+    if choices:
+        info = f"**{len(choices)}** video(s) reservado(s) pendientes de estilizar."
+    else:
+        info = "No tienes videos reservados pendientes. Resérvalos desde el catálogo de la web."
+    return gr.update(choices=choices, value=None), info
+
+def seleccionar_reserva(value):
+    """Al elegir del dropdown: muestra la miniatura y prepara el video para el pipeline.
+    Devuelve: thumbnail HTML, s_vid, s_video_id, s_censo_pk."""
+    if not value:
+        return _thumb_html(""), "", "", ""
+    pk, vid, mapa, link = (str(value).split("\t") + ["", "", "", ""])[:4]
+    cap = (f"{vid}  ·  {mapa}" if mapa else vid).strip()
+    return _thumb_html(link, cap), link, vid, pk
+
 def log_error(miembro, paso, mensaje, modelo=""):
     """Fire-and-forget: log a Gradio pipeline error to the backend."""
     try:
@@ -214,10 +272,10 @@ def log_error(miembro, paso, mensaje, modelo=""):
         pass
 
 # ── 01: CARGAR ────────────────────────────────────────────────────────────────
-def do_analyze(local, url):
+def do_analyze(src):
     try:
-        src = str(local) if local and os.path.exists(str(local)) else url.strip()
-        if not src: raise gr.Error("Sube un video o pega una URL.")
+        src = str(src or "").strip()
+        if not src: raise gr.Error("Selecciona un video reservado primero (paso 01).")
         path  = dl_temp(src)
         cap   = cv2.VideoCapture(path)
         fps   = cap.get(cv2.CAP_PROP_FPS) or 30
@@ -342,9 +400,9 @@ def do_fetch_censo(video_id):
 
 # ── GUARDAR ───────────────────────────────────────────────────────────────────
 def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url, orig_url,
-            mapa, especie, genero, etnia, duracion, camara, plano, interior, accion):
+            mapa, especie, genero, etnia, duracion, camara, plano, interior, accion, censo_pk=""):
     if not video_id or not vid_url:
-        return "⚠ Completa el ID de video y genera el video en el paso 04."
+        return "⚠ Selecciona un video reservado y genera el video en el paso 04."
     # Mínimo exigido por el flujo de trabajo: sin mapa/especie el registro
     # queda incompleto y no sirve para las estadísticas del equipo.
     faltantes = [n for n, v in [("MAPA", mapa), ("ESPECIE", especie)] if not str(v or "").strip()]
@@ -385,7 +443,13 @@ def do_save(video_id, miembro, estilo, prompt_img, img_url, prompt_vid, vid_url,
             "accion":              accion,
         }, timeout=15)
         if r.status_code == 201:
-            return "✓ GUARDADO EN REGISTRO — Pendiente de revisión"
+            # Sacar el video de la cola del miembro: marcar el censo como Estilizado.
+            if censo_pk:
+                try:
+                    req.post(f"{BACKEND_URL}/api/sheets/videos/{censo_pk}/estilizado/", timeout=8)
+                except Exception:
+                    pass
+            return "✓ GUARDADO — Pendiente de revisión. Video quitado de tu cola de reservados."
         return f"Error {r.status_code}: {r.text[:200]}"
     except Exception as e:
         return f"Error de conexión: {e}"
@@ -450,8 +514,9 @@ with gr.Blocks(title="MystherAI Studio") as demo:
     s_vid_out  = gr.State("")   # v2v result video url
     s_prompt_i = gr.State("")   # prompt used in I2I step
     s_miembro  = gr.State("")   # team member name (set in tab 01)
-    s_video_id = gr.State("")   # video id from query param
+    s_video_id = gr.State("")   # video id from query param / reserva elegida
     s_estilo   = gr.State("")   # estilo selected in step 03
+    s_censo_pk = gr.State("")   # pk del video de censo (para marcarlo Estilizado al guardar)
 
     demo.load(on_load, None, [api_key_st, s_vid, s_miembro, s_video_id])
 
@@ -476,16 +541,17 @@ with gr.Blocks(title="MystherAI Studio") as demo:
         # 01  CARGAR
         # ══════════════════════════════════════════════════════════════════════
         with gr.Tab("01  CARGAR", id=0):
-            gr.HTML('<div class="pipe-label">Carga el video y captura el fotograma inicial</div>')
-
-            with gr.Row():
-                local_vid = gr.Video(label="Subir Video", sources=["upload"], scale=2, height=240)
-                url_vid   = gr.Textbox(
-                    label="URL del Video (Google Drive / HTTP)", scale=2, lines=2,
-                    placeholder="https://drive.google.com/..."
-                )
+            gr.HTML('<div class="pipe-label">Elige uno de tus videos reservados y captura el fotograma inicial</div>')
 
             miembro_txt = gr.Textbox(label="Miembro del equipo", interactive=False, lines=1)
+
+            # Miniatura del video seleccionado (arriba) + dropdown de reservados (abajo)
+            thumb_html = gr.HTML(_thumb_html(""))
+            with gr.Row():
+                reservas_dd   = gr.Dropdown(label="🎬 Mis videos reservados (pendientes)", choices=[], value=None, interactive=True, scale=5)
+                btn_refrescar = gr.Button("🔄 Actualizar", variant="secondary", scale=1)
+            reservas_info = gr.Markdown("")
+
             btn_analyze = gr.Button("ANALIZAR VIDEO", variant="primary")
             vid_info    = gr.Textbox(label="Info", interactive=False, lines=1)
             frame_sl    = gr.Slider(0, 999, value=0, step=1, label="Fotograma")
@@ -497,12 +563,18 @@ with gr.Blocks(title="MystherAI Studio") as demo:
                 btn_to_editar = gr.Button("✂  EDITAR PRIMERO  →", variant="secondary", scale=1)
                 btn_to_imagen = gr.Button("→  CONTINUAR A IMAGEN  (saltar edición)", variant="primary", scale=2)
 
-            # Pre-fill URL and member from query params
-            demo.load(lambda u: gr.update(value=u) if u else gr.update(), s_vid, url_vid)
+            # Miembro + cola de reservados desde los query params (usuario)
             demo.load(lambda m: gr.update(value=m) if m else gr.update(), s_miembro, miembro_txt)
+            demo.load(cargar_reservas, s_miembro, [reservas_dd, reservas_info])
+            # Si se llegó con un video concreto (?video_url), mostrar su miniatura
+            demo.load(lambda u: _thumb_html(u, "Video abierto desde la web") if u else _thumb_html(""), s_vid, thumb_html)
+
+            # Elegir del dropdown: miniatura + preparar video/id/pk para el pipeline
+            reservas_dd.change(seleccionar_reserva, reservas_dd, [thumb_html, s_vid, s_video_id, s_censo_pk])
+            btn_refrescar.click(cargar_reservas, s_miembro, [reservas_dd, reservas_info])
 
             btn_analyze.click(
-                do_analyze, [local_vid, url_vid], [frame_sl, vid_info, s_vid]
+                do_analyze, s_vid, [frame_sl, vid_info, s_vid]
             )
             btn_snap.click(do_snap, [s_vid, frame_sl], [frame_prev, s_frame])
 
@@ -622,9 +694,10 @@ with gr.Blocks(title="MystherAI Studio") as demo:
                 do_save,
                 [s_video_id, s_miembro, s_estilo,
                  s_prompt_i, s_img_url, prompt_v, s_vid_out, s_vid,
-                 v_mapa, v_especie, v_genero, v_etnia, v_duracion, v_camara, v_plano, v_interior, v_accion],
+                 v_mapa, v_especie, v_genero, v_etnia, v_duracion, v_camara, v_plano, v_interior, v_accion,
+                 s_censo_pk],
                 save_st,
-            )
+            ).then(cargar_reservas, s_miembro, [reservas_dd, reservas_info])
 
 
 
