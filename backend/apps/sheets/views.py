@@ -1583,7 +1583,7 @@ class MarcarEstilizadoView(APIView):
 # Equipo actual que estiliza (debe reflejar los no-staff en setup_users.ACCOUNTS).
 # Bruno es admin y no estiliza; cualquier otro nombre en la BD (ex-empleados, cuentas
 # fantasma) se considera inválido y sus reservas se reclaman al correr AsignarCensoView.
-EQUIPO_ACTUAL = ['Fabio', 'Katty', 'Wilson', 'Olenka', 'Rodrigo']
+EQUIPO_ACTUAL = ['Fabio', 'Katty', 'Wilson', 'Olenka']
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1628,7 +1628,7 @@ class AsignarCensoView(APIView):
 
 
 # Personas que ya no están en la empresa — si se deniega su trabajo se borra y se libera el censo
-FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan', 'jose maria', 'omar'}
+FORMER_EMPLOYEES = {'mateo', 'miguel', 'laura', 'dario', 'david', 'alvaro', 'ivan', 'jose maria', 'omar', 'rodrigo'}
 
 
 class AprobarVideoView(APIView):

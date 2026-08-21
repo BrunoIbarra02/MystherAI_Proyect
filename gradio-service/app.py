@@ -158,7 +158,10 @@ I2I_MODELS = {
 
 V2V_MODELS = {
     "WAN 2.1 480p — Rápido (~1 min)":   "wavespeed-ai/wan-2.1/v2v-480p",
-    "Kling Video O3 Pro — Alta calidad": "kwaivgi/kling-video-o3-pro/video-edit",
+    # Kling Video O3 Pro retirado (2026-08-11): exige video de alto >=700px y los
+    # del censo son más chicos, así que fallaba el 100% de las veces ("The video
+    # height should not be less than 700px"). Re-añadir solo si se sube la
+    # resolución de origen. Ver Issue #29.
 }
 
 

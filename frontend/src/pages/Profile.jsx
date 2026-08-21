@@ -97,7 +97,8 @@ export default function Profile() {
   const revisarEnlaces = async (tipo) => {
     setSaludCargando(true); setSaludError(''); setSalud(null); setSaludTipo(tipo);
     try {
-      const r = await api.get(`/sheets/media-health/?tipo=${tipo}&limit=150`);
+      // limit alto (150+) hace timeout de gunicorn → 502; 60 responde bien.
+      const r = await api.get(`/sheets/media-health/?tipo=${tipo}&limit=60`);
       setSalud(r.data);
     } catch (err) {
       setSaludError(err.response?.data?.detail
@@ -122,7 +123,7 @@ export default function Profile() {
   const handleLogout = async () => { await logout(); navigate('/'); };
 
   const handleAsignarCenso = async () => {
-    if (!window.confirm('Esto liberará reservas que no pertenezcan al equipo actual (Fabio, Katty, Wilson, Olenka, Rodrigo) y repartirá todo lo disponible entre ellos. ¿Continuar?')) return;
+    if (!window.confirm('Esto liberará reservas que no pertenezcan al equipo actual (Fabio, Katty, Wilson, Olenka) y repartirá todo lo disponible entre ellos. ¿Continuar?')) return;
     setAsignando(true);
     try {
       const r = await api.post('/sheets/asignar-censo/');

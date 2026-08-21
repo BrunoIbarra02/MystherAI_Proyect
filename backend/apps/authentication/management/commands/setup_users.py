@@ -22,12 +22,9 @@ from django.contrib.auth import get_user_model
 
 
 # (email canónico, nombre, is_staff, is_superuser)
-# Rodrigo es jefe de equipo desde agosto de 2026: mismos permisos que Bruno.
-# A diferencia de Bruno, Rodrigo SÍ estiliza, así que sigue en EQUIPO_ACTUAL y
-# sus reservas no se liberan (ver ADMINS_QUE_NO_ESTILIZAN más abajo).
+# Equipo actual: Bruno (admin/dev), Wilson (dev + estiliza) y el resto estiliza.
 ACCOUNTS = [
     ('brunoibarraadame@gmail.com',  'Bruno',   True,  True),
-    ('rodrigo@mystherai.com',       'Rodrigo', True,  True),
     ('fabio.ramos.reyes@gmail.com', 'Fabio',   False, False),
     ('kathysp99@gmail.com',         'Katty',   False, False),
     ('wilson@mystherai.com',        'Wilson',  False, False),
@@ -35,13 +32,20 @@ ACCOUNTS = [
 ]
 
 # Admins que no producen: se les liberan las reservas automáticamente.
-# Rodrigo NO va aquí — es admin y además estiliza.
 ADMINS_QUE_NO_ESTILIZAN = ['Bruno']
 
-# Ex-empleados: se desactivan, no se borran, para conservar su histórico.
+# Ex-empleados: se desactivan (no se borran, para conservar su histórico) y se
+# les liberan las reservas de censo para redistribuirlas al equipo actual.
 DEACTIVATED = [
-    'chema.lezuza@gmail.com',  # Jose Maria — ya no está en el equipo
+    'chema.lezuza@gmail.com',      # Jose Maria — ya no está en el equipo
+    'rodrigo@mystherai.com',       # Rodrigo — dejó el equipo (ago 2026)
+    'dg.rodrigo.1503@gmail.com',   # Rodrigo (cuenta duplicada)
+    'rodrigo',                     # Rodrigo (cuenta duplicada sin dominio)
 ]
+
+# Nombres visibles cuyas reservas de censo deben liberarse al sincronizar
+# (ex-empleados que sí tenían videos reservados).
+NOMBRES_A_LIBERAR = ['Rodrigo']
 
 # Contraseña inicial SOLO para cuentas nuevas. Se puede fijar por entorno.
 DEFAULT_PASSWORD = os.getenv('INITIAL_USER_PASSWORD', 'Mystherai2026')
@@ -118,11 +122,11 @@ class Command(BaseCommand):
                     f'Su trabajo puede repartirse entre ambas.'
                 ))
 
-        # Liberar reservas de los admins que no producen.
-        # Rodrigo es admin pero sí estiliza: sus 81 reservas deben quedarse donde están.
+        # Liberar reservas de admins que no producen y de ex-empleados, para
+        # que "Repartir censo" pueda redistribuirlas al equipo actual.
         try:
             from apps.sheets.models import VideoMetadata
-            for nombre in ADMINS_QUE_NO_ESTILIZAN:
+            for nombre in ADMINS_QUE_NO_ESTILIZAN + NOMBRES_A_LIBERAR:
                 freed = VideoMetadata.objects.filter(
                     tipo='censo', estado_censo='Reservado', reservado_por__iexact=nombre
                 ).update(estado_censo='Disponible', reservado_por=None, reservado_por_user=None)
