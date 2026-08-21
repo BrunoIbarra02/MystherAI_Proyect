@@ -2,9 +2,11 @@ import React from "react";
 import AppNavbar from "../components/AppNavbar";
 import logoImg from "../assets/logo.jpeg";
 
-// Issue 13/20: ver VideoGalleryLayout.jsx — apuntaba al ALB de AWS muerto por
-// HTTP. Configurable por env var, con el dominio que el backend ya espera.
-const GRADIO_URL = import.meta.env.VITE_GRADIO_URL || "https://gradio.mystherai.com";
+// Gradio corre en el contenedor de ECS, puerto 7860 (mismo ALB que la API).
+// Se abre en pestaña nueva (window.open), así que HTTP no da mixed content.
+// gradio.mystherai.com NO sirve — es la app React. Override con VITE_GRADIO_URL
+// si algún día se monta un proxy HTTPS a :7860.
+const GRADIO_URL = import.meta.env.VITE_GRADIO_URL || "http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860";
 
 const Herramienta = () => {
   return (

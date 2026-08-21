@@ -10,9 +10,10 @@ import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useApiKey } from '../context/ApiKeyContext';
 
-// Issue 13/20: ver VideoGalleryLayout.jsx — apuntaba al ALB de AWS muerto por
-// HTTP. Configurable por env var, con el dominio que el backend ya espera.
-const GRADIO_BASE = import.meta.env.VITE_GRADIO_URL || 'https://gradio.mystherai.com';
+// Gradio corre en ECS puerto 7860 (mismo ALB que la API). Se abre en pestaña
+// nueva, así que HTTP no da mixed content. gradio.mystherai.com es la app React,
+// no Gradio. Override con VITE_GRADIO_URL si se monta un proxy HTTPS a :7860.
+const GRADIO_BASE = import.meta.env.VITE_GRADIO_URL || 'http://mysther-ai-alb-1734290767.eu-central-1.elb.amazonaws.com:7860';
 
 // Mismo criterio que VideoGalleryLayout: con el mínimo de 25 caracteres, IDs de
 // Drive válidos se descartaban y el video no se veía en el perfil pero sí en el censo.
