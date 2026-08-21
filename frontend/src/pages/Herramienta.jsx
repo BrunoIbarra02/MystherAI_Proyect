@@ -23,6 +23,11 @@ const Herramienta = () => {
   const [reservados, setReservados] = useState([]);
   const [sel, setSel] = useState("");
   const [loading, setLoading] = useState(true);
+  const [imgError, setImgError] = useState(false);
+
+  // Al cambiar de video, resetear el estado de error de la miniatura (si no,
+  // una miniatura que falló dejaba el <img> oculto para siempre).
+  useEffect(() => { setImgError(false); }, [sel]);
 
   useEffect(() => {
     api.get("/auth/profile-data/")
@@ -80,11 +85,13 @@ const Herramienta = () => {
                 background: "#0d0d0d", border: "1px solid #1c1c1c", marginBottom: "16px",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                {thumb ? (
-                  <img src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                {thumb && !imgError ? (
+                  <img key={sel} src={thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={() => setImgError(true)} />
                 ) : (
-                  <span style={{ color: "#444", fontSize: "12px" }}>Sin miniatura</span>
+                  <span style={{ color: "#444", fontSize: "12px" }}>
+                    {selVideo ? "Miniatura no disponible (video sin vista previa)" : "Sin miniatura"}
+                  </span>
                 )}
               </div>
 
